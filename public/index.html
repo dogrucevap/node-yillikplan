@@ -16,9 +16,14 @@
         <div class="form-container">
             <div id="message" class="message"></div>
 
-            <button type="button" class="demo-btn" onclick="loadDemoData()">
-                🎯 Demo Veriyi Yükle (Matematik 9. Sınıf - 36 Hafta)
-            </button>
+            <div class="action-buttons-container">
+                <button type="button" class="demo-btn" onclick="loadDemoData()" style="margin-bottom: 0;">
+                    🎯 Demo Veriyi Yükle (Matematik 9. Sınıf - 36 Hafta)
+                </button>
+                <button type="submit" form="planForm" class="generate-btn" id="generateBtn" style="width: auto; padding: 12px 20px; margin-bottom: 0;">
+                    📄 36 Haftalık Word Belgesini Oluştur
+                </button>
+            </div>
 
             <!-- Tab Sistemi -->
             <div class="tabs-container">
@@ -192,10 +197,10 @@
                                         </div>
                                         <div style="font-weight: bold;">Hafta</div>
                                         <div style="font-weight: bold;">Tarih</div>
+                                        <div style="font-weight: bold;">Ders Saati</div>
                                         <div style="font-weight: bold;">Ünite</div>
                                         <div style="font-weight: bold;">Konu</div>
                                         <div style="font-weight: bold;">Kazanım</div>
-                                        <div style="font-weight: bold;">Ders Saati</div>
                                         <div style="font-weight: bold;">Araç Gereç</div>
                                         <div style="font-weight: bold;">Yöntem/Teknik</div>
                                         <div style="font-weight: bold;">🔧</div>
@@ -215,10 +220,11 @@
                             <div class="spinner"></div>
                             <p>Word belgesi oluşturuluyor...</p>
                         </div>
-
-                        <button type="submit" class="generate-btn" id="generateBtn">
-                            📄 36 Haftalık Word Belgesini Oluştur
-                        </button>
+                        
+                        {/* Submit butonu formun dışında, action-buttons-container içinde yer alıyor.
+                            Form submit'i app.js'deki event listener ile yönetiliyor.
+                            Bu butonun type="submit" olması ve form="planForm" attribute'u olması önemlidir.
+                        */}
                     </form>
                 </div>
             </div>

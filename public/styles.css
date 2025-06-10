@@ -138,7 +138,7 @@ input:focus, textarea:focus, select:focus {
     cursor: pointer;
     font-size: 14px;
     font-weight: 600;
-    margin-bottom: 20px;
+    /* margin-bottom: 20px; */ /* action-buttons-container'a taşındı */
     transition: background 0.3s;
 }
 
@@ -146,9 +146,15 @@ input:focus, textarea:focus, select:focus {
     background: #e67e22;
 }
 
+.action-buttons-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px; 
+}
+
 .hafta-container {
-    max-height: 400px;
-    overflow-y: auto;
+    /* max-height ve overflow-y kaldırıldı */
     border: 1px solid #ddd;
     border-radius: 6px;
     background: white;
@@ -156,7 +162,8 @@ input:focus, textarea:focus, select:focus {
 
 .hafta-item {
     display: grid;
-    grid-template-columns: 40px 50px 100px 120px 1fr 120px 80px 150px 150px 30px;
+    /* Yeni Sütun Sırası: Checkbox(40), Hafta(50), Tarih(100), Ders Saati(80), Ünite(120), Konu(1fr), Kazanım(120), AraçGereç(150), YöntemTeknik(150), Düzenle(30) */
+    grid-template-columns: 40px 50px 100px 80px 120px 1fr 120px 150px 150px 30px;
     gap: 8px;
     padding: 8px;
     border-bottom: 1px solid #eee;
@@ -273,12 +280,12 @@ input:focus, textarea:focus, select:focus {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
-    padding: 15px 40px;
+    padding: 15px 40px; /* Stil HTML'den buraya taşınabilir */
     border-radius: 8px;
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
-    width: 100%;
+    /* width: 100%; */ /* action-buttons-container içinde auto olacak */
     transition: transform 0.3s, box-shadow 0.3s;
 }
 
@@ -468,7 +475,8 @@ input:focus, textarea:focus, select:focus {
 }
 @media (max-width: 1200px) {
     .hafta-item {
-        grid-template-columns: 35px 40px 80px 100px 1fr 100px 60px 120px 120px 30px;
+        /* Yeni sıra için responsive ayar: Checkbox(35), Hafta(40), Tarih(80), Ders Saati(60), Ünite(100), Konu(1fr), Kazanım(100), AraçGereç(120), YöntemTeknik(120), Düzenle(30) */
+        grid-template-columns: 35px 40px 80px 60px 100px 1fr 100px 120px 120px 30px;
         font-size: 11px;
     }
 }
@@ -491,15 +499,14 @@ input:focus, textarea:focus, select:focus {
     }
 
     .hafta-item {
-        min-width: 800px;
+        min-width: 950px; /* Yeni sütunlarla genişlik artabilir, ayarlanmalı */
     }
 }
 
 /* Sürükle-Bırak Stilleri */
 .hafta-item {
-    /* Mevcut .hafta-item stilleri burada kalacak, bu sadece eklemeler/üzerine yazmalar */
-    cursor: grab !important; /* Sürüklenebilir olduğunu belirtmek için imleç */
-    user-select: none; /* Sürüklerken metin seçimini engelle */
+    cursor: grab !important; 
+    user-select: none; 
 }
 
 .hafta-item.dragging {
@@ -509,11 +516,37 @@ input:focus, textarea:focus, select:focus {
 }
 
 .hafta-item.drag-over-target {
-    /* Üzerine gelinen bırakma hedefi için stil */
-    border-bottom: 3px solid #3498db !important; /* Bırakma konumunu gösteren daha belirgin çizgi */
+    border-bottom: 3px solid #3498db !important; 
 }
 
-/* Sürükleme sırasında gövdeye ve tüm alt öğelere imleci değiştirmek için (isteğe bağlı) */
 body.dragging-active, body.dragging-active * {
     cursor: grabbing !important;
+}
+
+.holiday-week {
+    background-color: #e9ecef !important; 
+    font-style: italic;
+}
+
+.holiday-week input, 
+.holiday-week select, 
+.holiday-week button {
+    visibility: hidden; 
+}
+
+.holiday-week > div:nth-child(2), 
+.holiday-week > div:nth-child(3)  
+{
+    visibility: visible !important; 
+}
+
+.holiday-week .tatil-aciklama-hucre { 
+    /* Checkbox(1), HaftaNo(2), Tarih(3), Ders Saati(4). Kalanlar 5'ten başlar. 6 sütun kaplar (5-10) */
+    grid-column: 5 / span 6; 
+    text-align: center;
+    font-weight: bold;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
