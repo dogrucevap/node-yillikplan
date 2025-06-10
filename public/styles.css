@@ -494,3 +494,26 @@ input:focus, textarea:focus, select:focus {
         min-width: 800px;
     }
 }
+
+/* Sürükle-Bırak Stilleri */
+.hafta-item {
+    /* Mevcut .hafta-item stilleri burada kalacak, bu sadece eklemeler/üzerine yazmalar */
+    cursor: grab !important; /* Sürüklenebilir olduğunu belirtmek için imleç */
+    user-select: none; /* Sürüklerken metin seçimini engelle */
+}
+
+.hafta-item.dragging {
+    opacity: 0.5;
+    background: #f0f0f0 !important;
+    border: 1px dashed #ccc !important;
+}
+
+.hafta-item.drag-over-target {
+    /* Üzerine gelinen bırakma hedefi için stil */
+    border-bottom: 3px solid #3498db !important; /* Bırakma konumunu gösteren daha belirgin çizgi */
+}
+
+/* Sürükleme sırasında gövdeye ve tüm alt öğelere imleci değiştirmek için (isteğe bağlı) */
+body.dragging-active, body.dragging-active * {
+    cursor: grabbing !important;
+}

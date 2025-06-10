@@ -19,6 +19,7 @@ function switchTab(tabId) {
 
 let yillikPlan = [];
 let varsayilanAracGerec = [];
+let draggedItemIndex = null; // Sürüklenen öğenin indeksini tutar
 
 function toggleDropdown(dropdown) {
     dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
@@ -77,8 +78,15 @@ function createYontemSelect(hafta, selectedItems = []) {
     });
     
     select.onchange = () => {
-        const selected = Array.from(select.selectedOptions).map(opt => opt.value);
-        yillikPlan[hafta - 1].yontemTeknik = selected;
+        const selectedValues = Array.from(select.selectedOptions).map(opt => opt.value);
+        // yillikPlan dizisindeki doğru hafta nesnesini bulup güncelle
+        // 'hafta' parametresi 1 tabanlı hafta numarasıdır.
+        const planIndex = yillikPlan.findIndex(h => h.hafta === hafta);
+        if (planIndex !== -1) {
+            yillikPlan[planIndex].yontemTeknik = selectedValues;
+        } else {
+            console.error(`Hafta ${hafta} yillikPlan dizisinde bulunamadı.`);
+        }
     };
     
     return select;
@@ -88,12 +96,29 @@ function renderYillikPlan() {
     const container = document.getElementById('haftaContainer');
     // Header'ı koru, diğerlerini temizle
     const header = container.querySelector('.hafta-header');
-    container.innerHTML = '';
-    container.appendChild(header);
+    container.innerHTML = ''; // Önce içeriği temizle
+    if (header) { // Header varsa ekle
+        container.appendChild(header);
+    }
+
+    // Sürükle bırak olay dinleyicilerini container'a ekle
+    // Önce mevcut dinleyicileri kaldır (renderYillikPlan her çağrıldığında tekrar eklenmemesi için)
+    // Bu yaklaşım yerine, dinleyicileri bir kez DOMContentLoaded'de ekleyip olay delegasyonu kullanmak daha performanslı olabilir,
+    // ancak mevcut yapı için bu daha basit.
+    container.removeEventListener('dragover', handleDragOver);
+    container.addEventListener('dragover', handleDragOver);
+
+    container.removeEventListener('drop', handleDrop);
+    container.addEventListener('drop', handleDrop);
     
     yillikPlan.forEach((hafta, index) => {
         const haftaDiv = document.createElement('div');
         haftaDiv.className = 'hafta-item';
+        haftaDiv.draggable = true; // Sürüklenebilir yap
+        haftaDiv.dataset.index = index; // Mevcut indeksi sakla
+
+        haftaDiv.addEventListener('dragstart', (event) => handleDragStart(event, index));
+        haftaDiv.addEventListener('dragend', handleDragEnd);
         
         // Hafta seçim checkbox'ı
         const selectDiv = document.createElement('div');
@@ -115,32 +140,34 @@ function renderYillikPlan() {
         haftaNum.textContent = hafta.hafta;
         haftaDiv.appendChild(haftaNum);
         
-        // Tarih
-        const tarihInput = document.createElement('input');
-        tarihInput.type = 'text';
-        tarihInput.value = hafta.tarih;
-        tarihInput.onchange = () => yillikPlan[index].tarih = tarihInput.value;
-        haftaDiv.appendChild(tarihInput);
+        // Tarih (Düzenlenemez - Düz Metin)
+        const tarihDiv = document.createElement('div');
+        tarihDiv.textContent = hafta.tarih || ''; // Tarih yoksa boş string
+        tarihDiv.style.padding = '6px 0'; // Sadece dikey padding, input görünümünü kaldır
+        tarihDiv.style.fontSize = '11px';
+        tarihDiv.style.display = 'flex';
+        tarihDiv.style.alignItems = 'center';
+        haftaDiv.appendChild(tarihDiv);
         
         // Ünite
         const uniteInput = document.createElement('input');
         uniteInput.type = 'text';
         uniteInput.value = hafta.unite;
-        uniteInput.onchange = () => yillikPlan[index].unite = uniteInput.value;
+        uniteInput.onchange = (e) => hafta.unite = e.target.value; // Doğrudan hafta nesnesini güncelle
         haftaDiv.appendChild(uniteInput);
         
         // Konu
         const konuInput = document.createElement('input');
         konuInput.type = 'text';
         konuInput.value = hafta.konu;
-        konuInput.onchange = () => yillikPlan[index].konu = konuInput.value;
+        konuInput.onchange = (e) => hafta.konu = e.target.value; // Doğrudan hafta nesnesini güncelle
         haftaDiv.appendChild(konuInput);
         
         // Kazanım
         const kazanimInput = document.createElement('input');
         kazanimInput.type = 'text';
         kazanimInput.value = hafta.kazanim;
-        kazanimInput.onchange = () => yillikPlan[index].kazanim = kazanimInput.value;
+        kazanimInput.onchange = (e) => hafta.kazanim = e.target.value; // Doğrudan hafta nesnesini güncelle
         haftaDiv.appendChild(kazanimInput);
         
         // Ders Saati
@@ -149,7 +176,7 @@ function renderYillikPlan() {
         dersSaatiInput.value = hafta.dersSaati;
         dersSaatiInput.min = '1';
         dersSaatiInput.max = '10';
-        dersSaatiInput.onchange = () => yillikPlan[index].dersSaati = dersSaatiInput.value;
+        dersSaatiInput.onchange = (e) => hafta.dersSaati = e.target.value; // Doğrudan hafta nesnesini güncelle
         haftaDiv.appendChild(dersSaatiInput);
         
         // Araç Gereç
@@ -173,6 +200,147 @@ function renderYillikPlan() {
 
     updateWeekSelectionCount();
 }
+
+
+// Sürükle-Bırak Fonksiyonları
+function handleDragStart(event, index) {
+    draggedItemIndex = index;
+    event.dataTransfer.effectAllowed = 'move';
+    event.target.classList.add('dragging'); // Sürüklenen öğeye stil için sınıf
+    // event.dataTransfer.setData('text/plain', index); // Gerekirse veri transferi
+}
+
+function handleDragEnd(event) {
+    if (event.target.classList) { // event.target null değilse
+      event.target.classList.remove('dragging');
+    }
+    // Bırakma hedefi üzerindeki vurguyu kaldır
+    document.querySelectorAll('.drag-over-target').forEach(el => el.classList.remove('drag-over-target'));
+    draggedItemIndex = null;
+}
+
+function handleDragOver(event) {
+    event.preventDefault(); // Bırakmayı mümkün kıl
+    event.dataTransfer.dropEffect = 'move';
+
+    const targetElement = event.target.closest('.hafta-item');
+    
+    // Önce tüm vurguları kaldır
+    document.querySelectorAll('.drag-over-target').forEach(el => el.classList.remove('drag-over-target'));
+
+    if (targetElement) {
+        const targetIndex = parseInt(targetElement.dataset.index);
+        if (draggedItemIndex !== null && draggedItemIndex !== targetIndex) {
+            targetElement.classList.add('drag-over-target'); // Sadece geçerli bir hedefse vurgula
+        }
+    }
+}
+
+function handleDrop(event) {
+    event.preventDefault();
+    const targetElement = event.target.closest('.hafta-item');
+    
+    document.querySelectorAll('.drag-over-target').forEach(el => el.classList.remove('drag-over-target'));
+
+    if (!targetElement || draggedItemIndex === null) {
+        // handleDragEnd çağrısı burada gereksiz olabilir çünkü zaten dragend'de çağrılıyor.
+        return;
+    }
+
+    const targetIndex = parseInt(targetElement.dataset.index);
+
+    if (draggedItemIndex !== targetIndex) {
+        // yillikPlan dizisini güncelle
+        const itemToMove = yillikPlan.splice(draggedItemIndex, 1)[0];
+        yillikPlan.splice(targetIndex, 0, itemToMove);
+
+        // Hafta numaralarını yeniden ata (1'den başlayarak)
+        // ve diğer inputların onchange fonksiyonlarındaki index bağımlılığını düzeltmek için
+        // renderYillikPlan'dan önce hafta.hafta değerlerini güncelle.
+        yillikPlan.forEach((h, i) => {
+            h.hafta = i + 1; // Hafta numarasını güncelle
+        });
+        
+        // ID'leri de güncellemek gerekebilir, özellikle checkbox ID'leri `week-${hafta.hafta}` şeklinde ise.
+        // renderYillikPlan bunu zaten halledecektir.
+
+        renderYillikPlan(); // Listeyi yeniden çiz
+        updateAllWeekDates(); // Tarihleri yeniden hesapla ve sırala
+    }
+    // handleDragEnd burada da çağrılabilir veya dragend olayına bırakılabilir.
+    // Genellikle dragend olayı bu temizliği yapar.
+}
+
+// Tarih Hesaplama Fonksiyonları
+function getMondayOfWeek(year, weekNumber) {
+    // Yılın ilk gününü bul
+    const firstDayOfYear = new Date(year, 0, 1);
+    // İlk Pazartesi'yi bul (ISO 8601'e göre hafta Pazartesi başlar)
+    // getDay() Pazar=0, Pazartesi=1, ..., Cumartesi=6
+    let daysToAdd = (weekNumber - 1) * 7; // İstenen haftanın başlangıcına git
+    
+    // Yılın ilk gününün hangi gün olduğuna bağlı olarak düzeltme yap
+    // Eğer yılın ilk günü Pazartesi değilse, ilk Pazartesi'ye ulaşmak için gün ekle/çıkar
+    const firstDayOfWeekDay = firstDayOfYear.getDay(); // 0 (Pazar) - 6 (Cumartesi)
+    let dayOffset = (firstDayOfWeekDay === 0) ? -6 : 1 - firstDayOfWeekDay; // Pazartesi'ye olan fark
+    
+    const targetDate = new Date(year, 0, 1 + dayOffset + daysToAdd);
+    return targetDate;
+}
+
+function formatDateRange(startDate) {
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + 6); // 7 günlük periyot (Pazartesi'den Pazar'a)
+
+    const startDay = startDate.getDate();
+    const endDay = endDate.getDate();
+
+    const months = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+    
+    const startMonth = months[startDate.getMonth()];
+    const endMonth = months[endDate.getMonth()];
+
+    if (startMonth === endMonth) {
+        return `${startDay} - ${endDay} ${startMonth}`;
+    } else {
+        return `${startDay} ${startMonth} - ${endDay} ${endMonth}`;
+    }
+}
+
+function updateAllWeekDates() {
+    const weekInput = document.getElementById('baslangicHaftasi').value;
+    if (!weekInput) {
+        // Başlangıç haftası seçilmemişse, mevcut tarihleri koru veya temizle
+        // Şimdilik, eğer tarihler zaten varsa koruyalım, yoksa boş bırakalım.
+        // Eğer her zaman hesaplanması isteniyorsa, burada varsayılan bir başlangıç haftası belirlenebilir.
+        yillikPlan.forEach(hafta => {
+            if (!hafta.tarih) hafta.tarih = ''; // Eğer tarih yoksa boş kalsın
+        });
+        renderYillikPlan();
+        return;
+    }
+
+    const [year, weekNumberStr] = weekInput.split('-W');
+    const weekNumber = parseInt(weekNumberStr);
+
+    if (isNaN(year) || isNaN(weekNumber)) {
+        console.error("Geçersiz hafta formatı:", weekInput);
+        // Hata durumunda tarihleri temizleyebilir veya mevcutları koruyabiliriz.
+        yillikPlan.forEach(hafta => hafta.tarih = ''); // Hata durumunda tarihleri temizle
+        renderYillikPlan();
+        return;
+    }
+    
+    let currentMonday = getMondayOfWeek(parseInt(year), weekNumber);
+
+    yillikPlan.forEach((haftaPlanı, index) => {
+        haftaPlanı.tarih = formatDateRange(currentMonday);
+        currentMonday.setDate(currentMonday.getDate() + 7); // Bir sonraki haftanın Pazartesi'sine geç
+    });
+
+    renderYillikPlan();
+}
+
 
 function toggleAllWeeks(checked) {
     document.querySelectorAll('.week-selector').forEach(checkbox => {
@@ -419,7 +587,8 @@ async function loadDemoData() {
             // İsteğe bağlı: yillikPlan = []; // Eğer veri yoksa planı temizle
         }
         
-        renderYillikPlan();
+        // renderYillikPlan(); // updateAllWeekDates zaten çağıracak
+        updateAllWeekDates(); // Demo veriler yüklendikten sonra tarihleri hesapla
         showMessage('✅ Demo veriler başarıyla yüklendi! 36 haftalık Matematik planı hazır.', 'success');
         
     } catch (error) {
@@ -460,9 +629,11 @@ document.addEventListener('DOMContentLoaded', function() {
             aciklama: ''
         });
     }
-    renderYillikPlan();
+    // renderYillikPlan(); // updateAllWeekDates zaten çağıracak
+    updateAllWeekDates(); // Sayfa ilk yüklendiğinde tarihleri hesapla (eğer başlangıç haftası varsa)
 
     // Event listeners
+    document.getElementById('baslangicHaftasi').addEventListener('change', updateAllWeekDates);
     document.getElementById('dersSaati').addEventListener('change', updateDersSaati);
     document.querySelectorAll('#aracGerecGroup input[type="checkbox"]').forEach(cb => {
         cb.addEventListener('change', updateVarsayilanAracGerec);
