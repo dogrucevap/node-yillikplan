@@ -37,6 +37,9 @@
                     <button class="tab-button" onclick="switchTab('yillik-plan')">
                         📅 Yıllık Plan
                     </button>
+                    <button class="tab-button" onclick="switchTab('kaydedilen-planlar'); loadSavedPlans();">
+                        💾 Kaydedilen Planlar
+                    </button>
                 </div>
 
                 <div class="tab-content">
@@ -104,46 +107,7 @@
                                 <p style="margin-bottom: 15px; color: #666; text-align: center;">Seçtiğiniz araç gereçler "Uygula" butonuna tıkladığınızda haftalardaki mevcut araç gereçleri değiştirir.</p>
                                 
                                 <div class="checkbox-group" id="aracGerecGroup">
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="ag1" value="Tahta">
-                                        <label for="ag1">Tahta</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="ag2" value="Projeksiyon">
-                                        <label for="ag2">Projeksiyon</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="ag3" value="Hesap Makinesi">
-                                        <label for="ag3">Hesap Makinesi</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="ag4" value="Bilgisayar">
-                                        <label for="ag4">Bilgisayar</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="ag5" value="Akıllı Tahta">
-                                        <label for="ag5">Akıllı Tahta</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="ag6" value="Grafik Tablet">
-                                        <label for="ag6">Grafik Tablet</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="ag7" value="Cetvel Seti">
-                                        <label for="ag7">Cetvel Seti</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="ag8" value="Pergel">
-                                        <label for="ag8">Pergel</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="ag9" value="Gönye">
-                                        <label for="ag9">Gönye</label>
-                                    </div>
-                                    <div class="checkbox-item">
-                                        <input type="checkbox" id="ag10" value="Çalışma Yaprağı">
-                                        <label for="ag10">Çalışma Yaprağı</label>
-                                    </div>
+                                    {/* Araç gereçler app.js'den dinamik olarak eklenecek */}
                                 </div>
                                 
                                 <div style="margin-top: 30px;">
@@ -205,7 +169,7 @@
                                         <div style="font-weight: bold;">Yöntem/Teknik</div>
                                         <div style="font-weight: bold;">🔧</div>
                                     </div>
-                                    <!-- Haftalık planlar buraya JS ile eklenecek -->
+                                    {/* Haftalık planlar buraya JS ile eklenecek */}
                                 </div>
 
                                 <div style="text-align: center; margin-top: 20px;">
@@ -213,6 +177,27 @@
                                         ⬅️ Araç Gereçlere Dön
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Tab 4: Kaydedilen Planlar -->
+                        <div id="kaydedilen-planlar" class="tab-panel">
+                            <div class="section">
+                                <h2 class="section-title">💾 Kayıtlı Yıllık Planlar</h2>
+                                <div id="savedPlansList" style="margin-bottom: 20px;">
+                                    {/* Kayıtlı planlar buraya JS ile eklenecek */}
+                                    <p>Yüklenecek kayıtlı plan bulunamadı.</p>
+                                </div>
+                                <div class="form-group">
+                                    <label for="newPlanName">Yeni Plan Adı (Kaydetmek için):</label>
+                                    <input type="text" id="newPlanName" placeholder="Örn: 9. Sınıf Matematik 2025-2026">
+                                </div>
+                                <button type="button" class="add-unite-btn" onclick="saveCurrentPlan()" style="background: #27ae60; width: 100%; margin-bottom:10px;">
+                                    💾 Mevcut Planı Kaydet
+                                </button>
+                                <button type="button" class="add-unite-btn" onclick="switchTab('yillik-plan')" style="background: #95a5a6; width: 100%; margin-bottom:0;">
+                                    📅 Yıllık Plan Düzenleyiciye Dön
+                                </button>
                             </div>
                         </div>
 
