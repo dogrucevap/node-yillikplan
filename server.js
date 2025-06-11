@@ -359,9 +359,19 @@ app.post('/generate-plan', async (req, res) => {
   }
 });
 
+// Environment detection
+const isProduction = process.env.NODE_ENV === 'production';
+const baseUrl = isProduction 
+  ? 'https://node-yillikplan-1074807643813.europe-west3.run.app'
+  : 'http://localhost:8080';
+
+console.log(`Environment: ${isProduction ? 'Cloud Run' : 'Local'}`);
+
+// Server start
 const port = process.env.PORT || 8080;
 app.listen(port, '0.0.0.0', () => {
   console.log(`Server running on port ${port}`);
+  console.log(`Base URL: ${baseUrl}`);
 });
 
 module.exports = app;

@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "deploy": "git add . && git commit -m 'deploy: güncellemeler' && git push origin main"
   },
   "dependencies": {
     "cors": "^2.8.5",
