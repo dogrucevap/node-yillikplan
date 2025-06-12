@@ -96,9 +96,47 @@ function insertDemoDataIfNeeded() {
                 dersSaati: week.dersSaati || demoData.dersSaati || '4', aracGerec: week.aracGerec || [],
                 yontemTeknik: week.yontemTeknik || [], olcmeDeğerlendirme: week.olcmeDeğerlendirme || '', aciklama: week.aciklama || ''
             }));
-            const stmtPlan = db.prepare("INSERT INTO plans (plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, varsayilan_arac_gerec, base_academic_plan_json, additional_teachers_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+            // Demo için tam yillikPlan oluştur (tatiller dahil)
+            const demoFullYillikPlan = [];
+            let demoAcademicPlanIndex = 0;
+            const TATIL_DONEMLERI_SERVER = { // İstemcidekiyle aynı olmalı
+                ARA_TATIL_1: { duration: 1, afterAcademicWeek: 9, label: "1. Ara Tatil" },
+                YARIYIL_TATILI: { duration: 2, afterAcademicWeek: 18, label: "Yarıyıl Tatili" },
+                ARA_TATIL_2: { duration: 1, afterAcademicWeek: 27, label: "2. Ara Tatil" }
+            };
+
+            while(demoAcademicPlanIndex < demoBaseAcademicPlan.length) {
+                for (const holidayKey in TATIL_DONEMLERI_SERVER) {
+                    if (TATIL_DONEMLERI_SERVER[holidayKey].afterAcademicWeek === demoAcademicPlanIndex) {
+                         const holiday = TATIL_DONEMLERI_SERVER[holidayKey];
+                         for (let j = 0; j < holiday.duration; j++) {
+                            demoFullYillikPlan.push({ type: 'holiday', label: holiday.label, tarih: '' }); // Tarih boş olabilir, istemci hesaplar
+                         }
+                         break; 
+                    }
+                }
+                const academicWeekData = demoBaseAcademicPlan[demoAcademicPlanIndex];
+                demoFullYillikPlan.push({ ...academicWeekData, type: 'academic', tarih: '' }); // Tarih boş olabilir
+                demoAcademicPlanIndex++;
+            }
+            for (const holidayKey in TATIL_DONEMLERI_SERVER) {
+                if (TATIL_DONEMLERI_SERVER[holidayKey].afterAcademicWeek === demoBaseAcademicPlan.length) {
+                     const holiday = TATIL_DONEMLERI_SERVER[holidayKey];
+                     for (let j = 0; j < holiday.duration; j++) {
+                        demoFullYillikPlan.push({ type: 'holiday', label: holiday.label, tarih: '' });
+                     }
+                     break;
+                }
+            }
+
+            const stmtPlan = db.prepare("INSERT INTO plans (plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, varsayilan_arac_gerec, base_academic_plan_json, plan_data_json, additional_teachers_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             stmtPlan.run("demo_matematik_9", demoData.okul, demoData.ogretmen, demoData.ders, demoData.sinif,
-              demoData.egitimOgretimYili, demoData.dersSaati, JSON.stringify(demoData.varsayilanAracGerec), JSON.stringify(demoBaseAcademicPlan), JSON.stringify([]));
+              demoData.egitimOgretimYili, demoData.dersSaati, 
+              JSON.stringify(demoData.varsayilanAracGerec), 
+              JSON.stringify(demoBaseAcademicPlan), 
+              JSON.stringify(demoFullYillikPlan), // Oluşturulan tam planı kaydet
+              JSON.stringify([])); // Demo için ek öğretmen yok
             stmtPlan.finalize();
         });
       });
@@ -166,23 +204,60 @@ app.get('/api/plans/:id', (req, res) => {
 });
 
 app.post('/api/plans', (req, res) => {
-    const { plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, varsayilan_arac_gerec, plan_data_json, base_academic_plan_json, additional_teachers } = req.body;
+    const { plan_id, plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, varsayilan_arac_gerec, plan_data_json, base_academic_plan_json, additional_teachers } = req.body;
+
     if (!plan_name) return res.status(400).json({ error: "Plan adı gereklidir." });
 
-    const stmt = db.prepare("INSERT INTO plans (plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, varsayilan_arac_gerec, plan_data_json, base_academic_plan_json, additional_teachers_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    stmt.run( plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, JSON.stringify(varsayilan_arac_gerec || []),
-        JSON.stringify(plan_data_json || null), JSON.stringify(base_academic_plan_json || null), JSON.stringify(additional_teachers || []),
-        function(err) {
-            if (err) {
-                if (err.message.includes("UNIQUE constraint failed: plans.plan_name")) {
-                    return res.status(409).json({ error: "Bu plan adı zaten mevcut. Lütfen farklı bir ad seçin." });
+    const sVarsayilanAracGerec = JSON.stringify(varsayilan_arac_gerec || []);
+    const sPlanDataJson = JSON.stringify(plan_data_json || null);
+    const sBaseAcademicPlanJson = JSON.stringify(base_academic_plan_json || null);
+    const sAdditionalTeachersJson = JSON.stringify(additional_teachers || []);
+
+    if (plan_id) {
+        // Var olan planı güncelle
+        const stmt = db.prepare(`UPDATE plans SET 
+            plan_name = ?, okul = ?, ogretmen = ?, ders = ?, sinif = ?, 
+            egitim_ogretim_yili = ?, ders_saati = ?, varsayilan_arac_gerec = ?, 
+            plan_data_json = ?, base_academic_plan_json = ?, additional_teachers_json = ?
+            WHERE id = ?`);
+        stmt.run(
+            plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati,
+            sVarsayilanAracGerec, sPlanDataJson, sBaseAcademicPlanJson, sAdditionalTeachersJson,
+            plan_id,
+            function(err) {
+                if (err) {
+                    if (err.message.includes("UNIQUE constraint failed: plans.plan_name")) {
+                        return res.status(409).json({ error: "Bu plan adı zaten mevcut. Lütfen farklı bir ad seçin." });
+                    }
+                    console.error("Plan güncelleme hatası:", err.message);
+                    return res.status(500).json({ error: "Plan güncellenirken bir hata oluştu." });
                 }
-                return res.status(500).json({ error: "Plan kaydedilirken bir hata oluştu." });
+                if (this.changes === 0) {
+                    return res.status(404).json({ error: "Güncellenecek plan bulunamadı veya bilgiler aynı." });
+                }
+                res.status(200).json({ message: `"${plan_name}" başarıyla güncellendi.`, id: plan_id, plan_name: plan_name });
             }
-            res.status(201).json({ message: "Plan başarıyla kaydedildi.", id: this.lastID, plan_name: plan_name });
-        }
-    );
-    stmt.finalize();
+        );
+        stmt.finalize();
+    } else {
+        // Yeni plan ekle
+        const stmt = db.prepare("INSERT INTO plans (plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, varsayilan_arac_gerec, plan_data_json, base_academic_plan_json, additional_teachers_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        stmt.run(
+            plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati,
+            sVarsayilanAracGerec, sPlanDataJson, sBaseAcademicPlanJson, sAdditionalTeachersJson,
+            function(err) {
+                if (err) {
+                    if (err.message.includes("UNIQUE constraint failed: plans.plan_name")) {
+                        return res.status(409).json({ error: "Bu plan adı zaten mevcut. Lütfen farklı bir ad seçin." });
+                    }
+                    console.error("Plan kaydetme hatası:", err.message);
+                    return res.status(500).json({ error: "Plan kaydedilirken bir hata oluştu." });
+                }
+                res.status(201).json({ message: `"${plan_name}" başarıyla kaydedildi.`, id: this.lastID, plan_name: plan_name });
+            }
+        );
+        stmt.finalize();
+    }
 });
 
 app.delete('/api/plans/:id', (req, res) => {
@@ -198,15 +273,55 @@ app.post('/generate-plan', async (req, res) => {
   try {
     const { okul, ogretmen, ders, sinif, egitimOgretimYili, dersSaati, haftalikPlan, additionalTeachers } = req.body;
 
-    const tableHeader = new TableRow({ /* ... (header içeriği aynı) ... */ });
+    const tableHeader = new TableRow({
+        children: [
+            new TableCell({ children: [new Paragraph({ text: "Hafta", alignment: AlignmentType.CENTER })], verticalAlign: "center" }),
+            new TableCell({ children: [new Paragraph({ text: "Tarih", alignment: AlignmentType.CENTER })], verticalAlign: "center" }),
+            new TableCell({ children: [new Paragraph({ text: "Saat", alignment: AlignmentType.CENTER })], verticalAlign: "center" }),
+            new TableCell({ children: [new Paragraph({ text: "Ünite Adı / Açıklama", alignment: AlignmentType.CENTER })], verticalAlign: "center" }),
+            new TableCell({ children: [new Paragraph({ text: "Konu", alignment: AlignmentType.CENTER })], verticalAlign: "center" }),
+            new TableCell({ children: [new Paragraph({ text: "Kazanımlar", alignment: AlignmentType.CENTER })], verticalAlign: "center" }),
+            new TableCell({ children: [new Paragraph({ text: "Araç-Gereçler", alignment: AlignmentType.CENTER })], verticalAlign: "center" }),
+            new TableCell({ children: [new Paragraph({ text: "Yöntem ve Teknikler", alignment: AlignmentType.CENTER })], verticalAlign: "center" }),
+        ],
+        tableHeader: true,
+    });
     const tableRows = [tableHeader];
 
     haftalikPlan.forEach(haftaData => {
-        // ... (haftalık plan satırlarını oluşturma mantığı aynı)
+        if (haftaData.type === 'holiday') {
+            tableRows.push(new TableRow({
+                children: [
+                    new TableCell({
+                        children: [new Paragraph({ text: haftaData.label, alignment: AlignmentType.CENTER, style: "strong" })],
+                        columnSpan: 8,
+                        shading: { type: ShadingType.SOLID, color: "D3D3D3", fill: "D3D3D3" },
+                        verticalAlign: "center"
+                    }),
+                ],
+            }));
+        } else {
+            const aracGerecText = Array.isArray(haftaData.aracGerec) ? haftaData.aracGerec.join(', ') : (haftaData.aracGerec || '');
+            const yontemTeknikText = Array.isArray(haftaData.yontemTeknik) ? haftaData.yontemTeknik.join(', ') : (haftaData.yontemTeknik || '');
+
+            tableRows.push(new TableRow({
+                children: [
+                    new TableCell({ children: [new Paragraph({ text: String(haftaData.originalAcademicWeek || ''), alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph({ text: haftaData.tarih || '', alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph({ text: String(haftaData.dersSaati || ''), alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph(haftaData.unite || '')] }),
+                    new TableCell({ children: [new Paragraph(haftaData.konu || '')] }),
+                    new TableCell({ children: [new Paragraph(haftaData.kazanim || '')] }),
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun(aracGerecText)] })] }),
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun(yontemTeknikText)] })] }),
+                ],
+            }));
+        }
     });
 
     // --- İMZA ALANI OLUŞTURMA (DÖNGÜNÜN DIŞINDA) ---
     const signatureCells = [];
+    // Dersi veren öğretmeni her zaman ilk ekle
     signatureCells.push(new TableCell({
         children: [
             new Paragraph({ children: [new TextRun({ text: ogretmen, bold: true, size: 22 })], alignment: AlignmentType.CENTER }),
@@ -216,11 +331,36 @@ app.post('/generate-plan', async (req, res) => {
     }));
 
     if (additionalTeachers && Array.isArray(additionalTeachers)) {
-        additionalTeachers.forEach(teacher => {
+        // Okul Müdürünü (varsa) listenin başına al (dersi veren öğretmenden sonra)
+        const principal = additionalTeachers.find(t => t.isPrincipal);
+        const otherTeachers = additionalTeachers.filter(t => !t.isPrincipal);
+        
+        const sortedTeachers = [];
+        if (principal) {
+            sortedTeachers.push(principal);
+        }
+        sortedTeachers.push(...otherTeachers);
+
+        sortedTeachers.forEach(teacher => {
+            // Dersi veren öğretmen zaten eklendi, onu tekrar ekleme
+            if (teacher.name === ogretmen && teacher.branch === "Öğretmen") return; 
+            // Eğer okul müdürü ve dersi veren öğretmen aynı kişiyse (ve branch "Öğretmen" değilse)
+            // bu kontrol daha karmaşıklaşabilir. Şimdilik basit tutuyoruz.
+            // Ya da daha iyisi, additionalTeachers'dan dersi veren öğretmeni filtrele.
+            // Ancak şu anki yapıda additionalTeachers dersi veren öğretmeni içermiyor olmalı.
+            // Okul Müdürü için özel bir durum:
+            if (teacher.isPrincipal && teacher.name === ogretmen) { // Eğer dersi veren öğretmen aynı zamanda okul müdürü olarak da girildiyse
+                 // ve branch "Okul Müdürü" ise (ki öyle olmalı)
+                 // zaten yukarıda dersi veren öğretmen olarak eklendi, burada tekrar eklemeye gerek yok
+                 // AMA eğer okul müdürü farklı bir isimle girildiyse eklenmeli.
+                 // Bu senaryo biraz karışık, şimdilik `getAdditionalTeachers` okul müdürünü ayrı ekliyor.
+            }
+
+
             signatureCells.push(new TableCell({
                 children: [
                     new Paragraph({ children: [new TextRun({ text: teacher.name, bold: true, size: 22 })], alignment: AlignmentType.CENTER }),
-                    new Paragraph({ children: [new TextRun({ text: teacher.branch, size: 20 })], alignment: AlignmentType.CENTER }),
+                    new Paragraph({ children: [new TextRun({ text: teacher.branch, size: 20 })], alignment: AlignmentType.CENTER }), // branch "Okul Müdürü" olacak
                     new Paragraph({ text: "\n\nİmza", alignment: AlignmentType.CENTER }),
                 ],
             }));
@@ -235,13 +375,64 @@ app.post('/generate-plan', async (req, res) => {
     const doc = new Document({
         creator: "Yillik Plan Oluşturucu",
         description: "Otomatik oluşturulmuş yıllık plan",
-        styles: { /* ... (stiller aynı) ... */ },
+        styles: {
+            paragraphStyles: [
+                { id: "Normal", name: "Normal", run: { size: 22, font: "Calibri" }, paragraph: { spacing: { before: 0, after: 100 } } },
+                { id: "strong", name: "Strong", basedOn: "Normal", run: { bold: true } },
+                { id: "tableHeader", name: "Table Header", basedOn: "Normal", run: { bold: true, size: 20 }, paragraph: { alignment: AlignmentType.CENTER } }
+            ]
+        },
         sections: [{
-            properties: {},
+            properties: {
+                 page: {
+                    margin: { top: 1440, right: 1080, bottom: 1440, left: 1080 }, // 2.5cm top/bottom, 1.875cm left/right (approx)
+                },
+            },
             children: [
                 new Paragraph({ children: [new TextRun({ text: "T.C. MİLLÎ EĞİTİM BAKANLIĞI", bold: true, size: 24 })], alignment: AlignmentType.CENTER }),
                 new Paragraph({ children: [new TextRun({ text: "ÜNİTELENDİRİLMİŞ YILLIK PLAN", bold: true, size: 20 })], alignment: AlignmentType.CENTER, spacing: { after: 400 } }),
-                new Table({ /* ... (üst bilgi tablosu aynı) ... */ }),
+                new Table({
+                    width: { size: 100, type: WidthType.PERCENTAGE },
+                    rows: [
+                        new TableRow({
+                            children: [
+                                new TableCell({ children: [new Paragraph({ text: "OKULU", style: "strong" })], width: { size: 20, type: WidthType.PERCENTAGE } }),
+                                new TableCell({ children: [new Paragraph(okul || '')], width: { size: 80, type: WidthType.PERCENTAGE } }),
+                            ],
+                        }),
+                        new TableRow({
+                            children: [
+                                new TableCell({ children: [new Paragraph({ text: "DERSİ", style: "strong" })] }),
+                                new TableCell({ children: [new Paragraph(ders || '')] }),
+                            ],
+                        }),
+                        new TableRow({
+                            children: [
+                                new TableCell({ children: [new Paragraph({ text: "SINIFI", style: "strong" })] }),
+                                new TableCell({ children: [new Paragraph(sinif || '')] }),
+                            ],
+                        }),
+                        new TableRow({
+                            children: [
+                                new TableCell({ children: [new Paragraph({ text: "ÖĞRETMENİN ADI SOYADI", style: "strong" })] }),
+                                new TableCell({ children: [new Paragraph(ogretmen || '')] }),
+                            ],
+                        }),
+                        new TableRow({
+                            children: [
+                                new TableCell({ children: [new Paragraph({ text: "EĞİTİM ÖĞRETİM YILI", style: "strong" })] }),
+                                new TableCell({ children: [new Paragraph(egitimOgretimYili || '')] }),
+                            ],
+                        }),
+                         new TableRow({
+                            children: [
+                                new TableCell({ children: [new Paragraph({ text: "HAFTALIK DERS SAATİ", style: "strong" })] }),
+                                new TableCell({ children: [new Paragraph(String(dersSaati || ''))] }),
+                            ],
+                        }),
+                    ],
+                    columnWidths: [2500, 7500], // Örnek sütun genişlikleri
+                }),
                 new Paragraph({ text: "", spacing: { after: 200 } }),
                 new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: tableRows }),
                 new Paragraph({ text: "", spacing: { after: 800 } }),

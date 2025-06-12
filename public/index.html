@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEB Ünitelendirilmiş Yıllık Plan Oluşturucu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -16,13 +17,9 @@
         <div class="form-container">
             <div id="message" class="message"></div>
 
-            <div class="action-buttons-container">
-                <button type="button" class="demo-btn" onclick="loadDemoData()" style="margin-bottom: 0;">
-                    🎯 Demo Veriyi Yükle (Matematik 9. Sınıf - 36 Hafta)
-                </button>
-                <button type="submit" form="planForm" class="generate-btn" id="generateBtn" style="width: auto; padding: 12px 20px; margin-bottom: 0;">
-                    📄 36 Haftalık Word Belgesini Oluştur
-                </button>
+            <!-- Demo Veri Yükle Butonu Kaldırıldı -->
+            <div class="action-buttons-container" style="justify-content: flex-end;"> 
+                <!-- Sadece sağda bir buton kalacaksa (ileride eklenebilir) veya boş kalacaksa diye flex-end -->
             </div>
 
             <div class="tabs-container">
@@ -33,12 +30,10 @@
                     <button class="tab-button" onclick="switchTab('arac-gerec')">
                         🛠️ Araç Gereçler
                     </button>
-                    <button class="tab-button" onclick="switchTab('yillik-plan')">
-                        📅 Yıllık Plan
+                    <button class="tab-button" onclick="switchTab('yillik-plan'); loadSavedPlans();"> <!-- Yıllık Plan'a tıklandığında kayıtlı planları yükle -->
+                        📅 Yıllık Plan ve Yönetimi
                     </button>
-                    <button class="tab-button" onclick="switchTab('kaydedilen-planlar'); loadSavedPlans();">
-                        💾 Kaydedilen Planlar
-                    </button>
+                    <!-- Kaydedilen Planlar Sekmesi Kaldırıldı -->
                 </div>
 
                 <div class="tab-content">
@@ -58,7 +53,6 @@
                                         </div>
                                     </div>
                                 </div>
-
                                 <div class="form-group">
                                     <div class="form-row-4">
                                         <div>
@@ -77,7 +71,9 @@
                                         </div>
                                         <div>
                                             <label for="egitimOgretimYili">Eğitim-Öğretim Yılı *</label>
-                                            <input type="text" id="egitimOgretimYili" name="egitimOgretimYili" value="2024-2025" required>
+                                            <select id="egitimOgretimYili" name="egitimOgretimYili" required>
+                                                <!-- Seçenekler JavaScript ile doldurulacak -->
+                                            </select>
                                         </div>
                                         <div>
                                             <label for="dersSaati">Haftalık Ders Saati *</label>
@@ -91,19 +87,23 @@
                                     <small style="display: block; margin-top: 5px; color: #555;">Bu haftanın Pazartesi gününden itibaren tarihler otomatik hesaplanacaktır.</small>
                                     <div id="planTarihAraligi" style="margin-top: 10px; font-weight: bold; color: #2c3e50;"></div>
                                 </div>
-
                                 <hr style="margin: 30px 0;">
-
                                 <h3 class="section-title" style="text-align: left; font-size: 18px; border: none; margin-bottom: 15px;">İmza Alanı Bilgileri</h3>
                                 <div class="form-group">
-                                    <label>İmza Alanına Eklenecek Diğer Öğretmenler:</label>
-                                    <div id="additionalTeachersContainer">
-                                        </div>
+                                    <label for="okulMudurAdi">Okul Müdürü Adı Soyadı *</label>
+                                    <div class="form-row-2" style="align-items: center;"> <!-- form-row-2 yapısını koruyalım, ikinci eleman readonly olacak -->
+                                        <input type="text" id="okulMudurAdi" name="okulMudurAdi" placeholder="Okul Müdürü Adı Soyadı" required>
+                                        <input type="text" id="okulMudurUnvani" name="okulMudurUnvani" value="Okul Müdürü" readonly style="background-color: #e9ecef; cursor: default; border-color: #ced4da;">
+                                    </div>
+                                </div>
+                                <hr style="margin: 25px 0;">
+                                <div class="form-group">
+                                    <label>İmza Alanına Eklenecek Diğer Öğretmenler (Varsa):</label>
+                                    <div id="additionalTeachersContainer"></div>
                                     <button type="button" id="addTeacherBtn" class="add-unite-btn" style="background: #27ae60; font-size: 14px; padding: 8px 15px; margin-top: 10px;">
                                         + Öğretmen Ekle
                                     </button>
                                 </div>
-
                                 <div style="text-align: center; margin-top: 30px;">
                                     <button type="button" class="add-unite-btn" onclick="switchTab('arac-gerec')" style="background: #3498db;">
                                         ➡️ Araç Gereçlere Geç
@@ -113,22 +113,74 @@
                         </div>
 
                         <div id="arac-gerec" class="tab-panel">
+                             <div class="section">
+                                <h3 class="section-title" style="text-align: left; font-size: 18px; border: none; margin-bottom: 15px;">Varsayılan Araç-Gereçler</h3>
+                                <p style="margin-bottom:15px; font-size:14px; color: #555;">Burada seçtiğiniz araç-gereçler, yıllık plandaki her hafta için otomatik olarak seçili gelecektir. Haftalık bazda değişiklik yapabilirsiniz.</p>
+                                <div id="aracGerecGroup" class="checkbox-group">
+                                    <!-- Araç-gereç checkbox'ları buraya eklenecek -->
+                                </div>
+                                <!-- Araç Gereçlerden Yıllık Plana Geç Butonu Kaldırıldı -->
                             </div>
-                        <div id="yillik-plan" class="tab-panel">
-                           </div>
-                        <div id="kaydedilen-planlar" class="tab-panel">
-                            </div>
+                        </div>
 
+                        <div id="yillik-plan" class="tab-panel">
+                            <div class="hafta-header">
+                                <div>Seç</div>
+                                <div>Hafta No / Tatil Adı</div>
+                                <div>Tarih Aralığı</div>
+                                <div>Ders Saati</div>
+                                <div>Ünite Adı / Açıklama</div>
+                                <div>Konu / Kazanımlar</div>
+                                <div>Kazanımlar / Alt Başlıklar</div>
+                                <div>Araç-Gereçler</div>
+                                <div>Yöntem ve Teknikler</div>
+                                <div>Düzenle</div>
+                            </div>
+                            <div id="haftaContainer" class="hafta-container-grid">
+                                <!-- Haftalık plan satırları buraya eklenecek -->
+                            </div>
+                            
+                            <!-- Plan Yönetim Alanı ve Ana İndir Butonu Yıllık Plan Sekmesinden Çıkarıldı -->
+                        </div>
+                        <!-- Eski Kaydedilen Planlar Sekmesi İçeriği Buradan Kaldırıldı -->
                         <div class="loading" id="loading">
                             <div class="spinner"></div>
                             <p>Word belgesi oluşturuluyor...</p>
                         </div>
                     </form>
+                </div> <!-- .tab-content sonu -->
+            </div> <!-- .tabs-container sonu -->
+
+            <!-- Plan Yönetim Alanı ve Ana İndir Butonu Buraya Taşındı (Tüm Tabların Altına) -->
+            <hr style="margin: 40px 0;">
+            <div id="planYonetimAlani" class="section" style="border-left-color: #2ecc71; margin-top: 0;"> <!-- margin-top:0 eklendi çünkü hr zaten var -->
+                <h3 class="section-title" style="text-align: left; font-size: 18px; border: none; margin-bottom: 15px;">Plan Yönetimi ve Kayıtlı Planlar</h3>
+                <div class="form-group">
+                    <label for="currentPlanNameInput">Mevcut Plan Adı (Kaydetmek veya Güncellemek İçin):</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="currentPlanNameInput" placeholder="Plan adı (boş bırakılırsa otomatik adlandırılır)" style="flex-grow: 1;">
+                        <button type="button" class="demo-btn" onclick="saveCurrentPlan()" style="background: #2ecc71; padding: 12px 20px; white-space: nowrap;">
+                            💾 Kaydet
+                        </button>
+                    </div>
+                    <small style="display: block; margin-top: 5px; color: #555;">Var olan bir plan adını girerseniz, o plan güncellenir. Yeni bir ad girerseniz veya boş bırakırsanız yeni plan olarak kaydedilir.</small>
+                </div>
+                <h4 style="margin-top: 30px; margin-bottom: 15px; font-size: 16px; color: #2c3e50;">Kaydedilmiş Planlar:</h4>
+                <div id="savedPlansListContainer" class="saved-plans-list">
+                    <!-- Kaydedilmiş planlar buraya listelenecek -->
                 </div>
             </div>
-        </div>
-    </div>
 
+            <hr style="margin: 40px 0;">
+
+            <div style="text-align: center; margin-top: 0; margin-bottom: 20px;"> <!-- margin-top:0 eklendi, margin-bottom eklendi -->
+                <button type="submit" form="planForm" class="generate-btn" id="generateBtn">
+                    📄 Kaydetmeden Mevcut Planı İndir (Word)
+                </button>
+            </div>
+
+        </div> <!-- .form-container sonu -->
+    </div> <!-- .container sonu -->
     <script src="app.js"></script>
 </body>
 </html>

@@ -5,7 +5,8 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Roboto', sans-serif; /* Değiştirildi */
+    font-size: 18px; /* Eklendi */
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
     padding: 20px;
@@ -28,13 +29,13 @@ body {
 }
 
 .header h1 {
-    font-size: 28px;
+    font-size: 24px; /* Değiştirildi (max 24px) */
     margin-bottom: 10px;
 }
 
 .header p {
     opacity: 0.9;
-    font-size: 16px;
+    font-size: 16px; /* 18px'e göre daha küçük, okunabilirlik için iyi olabilir */
 }
 
 .form-container {
@@ -50,7 +51,7 @@ body {
 }
 
 .section-title {
-    font-size: 20px;
+    font-size: 22px; /* 24px'e yakın, hiyerarşi için */
     font-weight: 600;
     color: #2c3e50;
     margin-bottom: 20px;
@@ -99,7 +100,8 @@ input, textarea, select {
     padding: 12px;
     border: 2px solid #ecf0f1;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 16px; /* Varsayılan 18px'e göre biraz daha küçük, form elemanları için */
+    font-family: 'Roboto', sans-serif; /* Fontu miras almasını sağla */
     transition: border-color 0.3s;
 }
 
@@ -136,7 +138,7 @@ input:focus, textarea:focus, select:focus {
     padding: 12px 20px;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 16px; /* Güncellendi */
     font-weight: 600;
     /* margin-bottom: 20px; */ /* action-buttons-container'a taşındı */
     transition: background 0.3s;
@@ -168,7 +170,7 @@ input:focus, textarea:focus, select:focus {
     padding: 8px;
     border-bottom: 1px solid #eee;
     align-items: center;
-    font-size: 12px;
+    font-size: 12px; /* Yıllık plan tablosu için daha küçük font - KORUNDU */
 }
 
 .hafta-item:nth-child(even) {
@@ -177,17 +179,32 @@ input:focus, textarea:focus, select:focus {
 
 .hafta-item input, .hafta-item select {
     padding: 6px;
-    font-size: 11px;
+    font-size: 11px; /* Yıllık plan tablosu içi inputlar için daha küçük font - KORUNDU */
+    font-family: 'Roboto', sans-serif;
     border: 1px solid #ddd;
 }
 
 .hafta-header {
+    display: grid; /* Eklendi */
+    /* .hafta-item ile aynı sütun yapısı */
+    grid-template-columns: 40px 50px 100px 80px 120px 1fr 120px 150px 150px 30px; /* Eklendi */
+    gap: 8px; /* Eklendi - .hafta-item ile aynı */
+    padding: 8px; /* Eklendi - .hafta-item ile aynı */
     background: #34495e;
     color: white;
     font-weight: 600;
     position: sticky;
     top: 0;
     z-index: 10;
+    border-bottom: 1px solid #2c3e50; /* Ayırıcı çizgi */
+}
+
+.hafta-header > div { /* Başlık hücreleri için hizalama */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center; /* Metin hizalaması */
+    font-size: 12px; /* Yıllık plan tablo başlığı için daha küçük font - KORUNDU */
 }
 
 .week-checkbox {
@@ -252,7 +269,7 @@ input:focus, textarea:focus, select:focus {
 .arac-gerec-option {
     padding: 8px;
     cursor: pointer;
-    font-size: 11px;
+    font-size: 14px; /* Biraz büyütüldü */
 }
 
 .arac-gerec-option:hover {
@@ -266,7 +283,7 @@ input:focus, textarea:focus, select:focus {
     padding: 12px 20px;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 16px; /* Güncellendi */
     font-weight: 600;
     margin-bottom: 30px;
     transition: background 0.3s;
@@ -282,7 +299,7 @@ input:focus, textarea:focus, select:focus {
     border: none;
     padding: 15px 40px; /* Stil HTML'den buraya taşınabilir */
     border-radius: 8px;
-    font-size: 16px;
+    font-size: 18px; /* Güncellendi */
     font-weight: 600;
     cursor: pointer;
     /* width: 100%; */ /* action-buttons-container içinde auto olacak */
@@ -360,7 +377,7 @@ input:focus, textarea:focus, select:focus {
     background: #f8f9fa;
     border: none;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 17px; /* Güncellendi */
     font-weight: 600;
     color: #666;
     transition: all 0.3s;
@@ -419,7 +436,7 @@ input:focus, textarea:focus, select:focus {
 }
 
 .tab-panel .section-title {
-    font-size: 24px;
+    font-size: 24px; /* Max heading size */
     margin-bottom: 25px;
     color: #2c3e50;
     text-align: center;
@@ -457,7 +474,7 @@ input:focus, textarea:focus, select:focus {
     .tab-button {
         border-right: none;
         border-bottom: 1px solid #ddd;
-        font-size: 14px;
+        font-size: 15px; /* Güncellendi */
         padding: 12px 15px;
     }
     
@@ -474,10 +491,13 @@ input:focus, textarea:focus, select:focus {
     }
 }
 @media (max-width: 1200px) {
-    .hafta-item {
+    .hafta-header, .hafta-item { /* .hafta-header da etkilensin */
         /* Yeni sıra için responsive ayar: Checkbox(35), Hafta(40), Tarih(80), Ders Saati(60), Ünite(100), Konu(1fr), Kazanım(100), AraçGereç(120), YöntemTeknik(120), Düzenle(30) */
         grid-template-columns: 35px 40px 80px 60px 100px 1fr 100px 120px 120px 30px;
         font-size: 11px;
+    }
+    .hafta-header > div {
+        font-size: 11px; /* Başlık font boyutu da küçülsün */
     }
 }
 
@@ -498,7 +518,7 @@ input:focus, textarea:focus, select:focus {
         overflow-x: auto;
     }
 
-    .hafta-item {
+    .hafta-header, .hafta-item { /* .hafta-header da etkilensin */
         min-width: 950px; /* Yeni sütunlarla genişlik artabilir, ayarlanmalı */
     }
 }
@@ -550,3 +570,91 @@ body.dragging-active, body.dragging-active * {
     align-items: center;
     justify-content: center;
 }
+
+/* Plan Yönetim Alanı ve Kayıtlı Planlar Listesi Stilleri */
+#planYonetimAlani {
+    margin-top: 30px;
+    padding: 25px;
+    background: #f0f4f8; /* Biraz farklı bir arka plan */
+    border-radius: 8px;
+    border-left: 4px solid #2ecc71; /* Yeşil vurgu */
+}
+
+#planYonetimAlani .form-group label {
+    font-size: 16px; /* Güncellendi */
+}
+
+#currentPlanNameInput {
+    padding: 10px; /* Butonla uyumlu padding */
+}
+
+.saved-plans-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 10px;
+    max-height: 300px; /* Gerekirse kaydırma çubuğu */
+    overflow-y: auto;
+    border: 1px solid #dde;
+    border-radius: 6px;
+    background: white;
+}
+
+.saved-plan-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid #e7e7e7;
+    font-size: 15px; /* Güncellendi */
+}
+
+.saved-plan-item:last-child {
+    border-bottom: none;
+}
+
+.saved-plan-item span { /* Plan adı */
+    flex-grow: 1;
+    margin-right: 15px;
+    color: #333;
+}
+
+.saved-plan-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.saved-plan-buttons button {
+    padding: 6px 12px;
+    font-size: 14px; /* Güncellendi */
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background-color 0.2s, border-color 0.2s;
+    background-color: #e9ecef;
+    color: #2c3e50;
+}
+
+.saved-plan-buttons button:hover {
+    background-color: #dfe4ea;
+}
+
+.saved-plan-buttons .delete-btn {
+    background-color: #ffdddd;
+    color: #c0392b;
+    border-color: #ffb8b8;
+}
+.saved-plan-buttons .delete-btn:hover {
+    background-color: #ffcccc;
+    color: #a03020;
+}
+
+.saved-plan-buttons .download-saved-btn {
+    background-color: #ddeeff;
+    color: #3498db;
+    border-color: #b8d8ff;
+}
+.saved-plan-buttons .download-saved-btn:hover {
+    background-color: #cce4ff;
+    color: #2070a0;
+}
+/* Bitiş: Plan Yönetim Alanı Stilleri */
