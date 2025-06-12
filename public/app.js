@@ -679,8 +679,12 @@ async function saveOgretmen() {
 function getSelectedSidebarOgretmenler() {
     const selected = [];
     document.querySelectorAll('#sidebarOgretmenList .ogretmen-item-button.selected').forEach(btn => {
-        const ogretmen = tumOgretmenlerListesi.find(o => o.id === btn.dataset.id);
-        if (ogretmen) selected.push(ogretmen);
+        const ogretmen = tumOgretmenlerListesi.find(o => String(o.id) === String(btn.dataset.id)); // ID'leri string olarak karşılaştır
+        if (ogretmen) {
+            selected.push(ogretmen);
+        } else {
+            console.warn(`Eşleşen öğretmen bulunamadı. Buton ID: ${btn.dataset.id}, Liste ID'leri: ${tumOgretmenlerListesi.map(item => item.id)}`);
+        }
     });
     return selected;
 }
@@ -691,19 +695,37 @@ function addSelectedOgretmenToPlan() {
         showMessage("Lütfen plandaki imza alanına eklemek için en az bir müdür/öğretmen seçin.", "error");
         return;
     }
+
+    let mudurZatenVar = planaEklenenOgretmenler.some(o => o.isMudur);
+
     secilenler.forEach(secilen => {
+        if (secilen.isMudur) {
+            if (mudurZatenVar && !planaEklenenOgretmenler.find(p => p.id === secilen.id && p.isMudur)) {
+                // Eğer zaten bir müdür varsa VE seçilen müdür plandaki müdür değilse (yani farklı bir müdür eklenmeye çalışılıyorsa)
+                showMessage(`Plana zaten bir müdür ekli. İkinci bir müdür ekleyemezsiniz. Mevcut müdürü kaldırıp yenisini ekleyebilirsiniz.`, "warning");
+                // Sidebar'daki bu müdürün seçimini kaldırabiliriz ki kullanıcı tekrar denemesin.
+                const sidebarButton = document.querySelector(`#sidebarOgretmenList .ogretmen-item-button[data-id="${secilen.id}"]`);
+                if (sidebarButton) sidebarButton.classList.remove('selected');
+                return; // Bu müdürü ekleme
+            }
+            mudurZatenVar = true; // Eğer bu ilk müdürse veya aynı müdür tekrar seçildiyse (ki bu durumda eklenmeyecek)
+        }
+
         if (!planaEklenenOgretmenler.find(p => p.id === secilen.id)) {
             planaEklenenOgretmenler.push({...secilen});
         }
     });
-    // Müdür her zaman listenin başında olsun (eğer varsa)
+
+    // Öğretmenleri sırala: Önce öğretmenler (alfabetik), sonra müdür (eğer varsa en sonda)
     planaEklenenOgretmenler.sort((a, b) => {
-        if (a.isMudur && !b.isMudur) return -1;
-        if (!a.isMudur && b.isMudur) return 1;
-        return (a.name || '').localeCompare(b.name || '');
+        if (a.isMudur && !b.isMudur) return 1;  // Müdürler sona gelsin
+        if (!a.isMudur && b.isMudur) return -1; // Öğretmenler öne gelsin
+        return (a.name || '').localeCompare(b.name || ''); // Aynı türdekileri alfabetik sırala
     });
+
     renderPlanImzaAlanlari();
-    showMessage("Seçilen kişiler imza alanına eklendi.", "success");
+    if(secilenler.length > 0) showMessage("Seçilen kişiler imza alanına eklendi/güncellendi.", "success");
+    updateSidebarActionButtonsState(); // Buton durumlarını güncelle
 }
 
 function removeOgretmenFromPlan(ogretmenId) {

@@ -664,13 +664,10 @@ app.post('/generate-plan', async (req, res) => {
                     width: { size: 100, type: WidthType.PERCENTAGE },
                     borders: { top: { style: "none" }, bottom: { style: "none" }, left: { style: "none" }, right: { style: "none" }, insideHorizontal: { style: "none" }, insideVertical: { style: "none" } },
                 }),
-                new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    spacing: { before: 600 },
-                    children: [
-                        new TextRun({ text: `${new Date().toLocaleDateString('tr-TR')}\nUygundur\n\n[Okul Müdürü Adı Soyadı]\nOkul Müdürü`, size: 22, bold: true })
-                    ]
-                })
+                // Sabit "Uygundur Okul Müdürü" kısmı kaldırıldı. Bu bilgi artık additionalTeachers ile dinamik olarak yönetilecek.
+                // Eğer additionalTeachers içinde Okul Müdürü varsa, o zaten signatureRows içinde eklenecektir.
+                // Ekstra bir "Uygundur" metni isteniyorsa, bu ayrıca eklenebilir, ancak belirli bir isme bağlı olmamalı.
+                // Şimdilik tamamen kaldırıyorum, çünkü imza alanları zaten dinamik.
             ],
         }],
     });
