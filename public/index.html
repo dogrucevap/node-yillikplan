@@ -25,7 +25,6 @@
                 </button>
             </div>
 
-            <!-- Tab Sistemi -->
             <div class="tabs-container">
                 <div class="tabs-nav">
                     <button class="tab-button active" onclick="switchTab('temel-bilgiler')">
@@ -44,9 +43,9 @@
 
                 <div class="tab-content">
                     <form id="planForm">
-                        <!-- Tab 1: Başlık ve Dipnotlar -->
                         <div id="temel-bilgiler" class="tab-panel active">
                             <div class="section">
+                                <h3 class="section-title" style="text-align: left; font-size: 18px; border: none; margin-bottom: 15px;">Genel Bilgiler</h3>
                                 <div class="form-group">
                                     <div class="form-row-2">
                                         <div>
@@ -54,7 +53,7 @@
                                             <input type="text" id="okul" name="okul" required>
                                         </div>
                                         <div>
-                                            <label for="ogretmen">Öğretmen Adı Soyadı *</label>
+                                            <label for="ogretmen">Dersi Veren Öğretmen Adı Soyadı *</label>
                                             <input type="text" id="ogretmen" name="ogretmen" required>
                                         </div>
                                     </div>
@@ -93,6 +92,18 @@
                                     <div id="planTarihAraligi" style="margin-top: 10px; font-weight: bold; color: #2c3e50;"></div>
                                 </div>
 
+                                <hr style="margin: 30px 0;">
+
+                                <h3 class="section-title" style="text-align: left; font-size: 18px; border: none; margin-bottom: 15px;">İmza Alanı Bilgileri</h3>
+                                <div class="form-group">
+                                    <label>İmza Alanına Eklenecek Diğer Öğretmenler:</label>
+                                    <div id="additionalTeachersContainer">
+                                        </div>
+                                    <button type="button" id="addTeacherBtn" class="add-unite-btn" style="background: #27ae60; font-size: 14px; padding: 8px 15px; margin-top: 10px;">
+                                        + Öğretmen Ekle
+                                    </button>
+                                </div>
+
                                 <div style="text-align: center; margin-top: 30px;">
                                     <button type="button" class="add-unite-btn" onclick="switchTab('arac-gerec')" style="background: #3498db;">
                                         ➡️ Araç Gereçlere Geç
@@ -101,105 +112,12 @@
                             </div>
                         </div>
 
-                        <!-- Tab 2: Araç Gereçler -->
                         <div id="arac-gerec" class="tab-panel">
-                            <div class="section">
-                                <p style="margin-bottom: 15px; color: #666; text-align: center;">Seçtiğiniz araç gereçler "Uygula" butonuna tıkladığınızda haftalardaki mevcut araç gereçleri değiştirir.</p>
-                                
-                                <div class="checkbox-group" id="aracGerecGroup">
-                                    {/* Araç gereçler app.js'den dinamik olarak eklenecek */}
-                                </div>
-                                
-                                <div style="margin-top: 30px;">
-                                    <div style="display: flex; gap: 15px; align-items: center; justify-content: center; flex-wrap: wrap;">
-                                        <button type="button" class="add-unite-btn" onclick="applyDefaultAracGerec()" style="margin: 0;">
-                                            🔄 Seçili Haftalara Yeniden Belirle
-                                        </button>
-                                        <button type="button" class="add-unite-btn" onclick="applyToAllWeeks()" style="margin: 0; background: #e67e22;">
-                                            🌍 Tüm Haftalara Zorla Uygula
-                                        </button>
-                                    </div>
-                                    <div style="display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 15px; flex-wrap: wrap;">
-                                        <button type="button" onclick="selectWeeksWithAracGerec()" style="padding: 8px 12px; background: #95a5a6; color: white; border: none; border-radius: 4px; font-size: 12px;">
-                                            📦 Araç Gereç Olan Haftaları Seç
-                                        </button>
-                                        <button type="button" onclick="selectWeeksWithoutAracGerec()" style="padding: 8px 12px; background: #95a5a6; color: white; border: none; border-radius: 4px; font-size: 12px;">
-                                            📭 Araç Gereç Olmayan Haftaları Seç
-                                        </button>
-                                        <button type="button" onclick="clearWeekSelection()" style="padding: 8px 12px; background: #95a5a6; color: white; border: none; border-radius: 4px; font-size: 12px;">
-                                            🧹 Seçimi Temizle
-                                        </button>
-                                    </div>
-                                    <div style="text-align: center; margin-top: 15px;">
-                                        <span style="font-size: 14px; color: #666; font-weight: 600;">
-                                            💡 Hafta Seçimi: Yıllık Plan sekmesindeki tabloda sol taraftaki checkbox'larla hangi haftalara uygulanacağını seçin
-                                        </span>
-                                    </div>
-                                </div>
-                                
-                                <div id="applyMessage" style="margin-top: 15px; padding: 10px; border-radius: 4px; display: none;"></div>
-
-                                <div style="text-align: center; margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
-                                    <button type="button" class="add-unite-btn" onclick="switchTab('temel-bilgiler')" style="background: #95a5a6;">
-                                        ⬅️ Başlık ve Dipnotlara Dön
-                                    </button>
-                                    <button type="button" class="add-unite-btn" onclick="switchTab('yillik-plan')" style="background: #3498db;">
-                                        ➡️ Yıllık Plana Geç
-                                    </button>
-                                </div>
                             </div>
-                        </div>
-
-                        <!-- Tab 3: Yıllık Plan -->
                         <div id="yillik-plan" class="tab-panel">
-                            <div class="section">
-                                <div class="hafta-container" id="haftaContainer">
-                                    <div class="hafta-item hafta-header">
-                                        <div style="display: flex; align-items: center; justify-content: center;">
-                                            <input type="checkbox" id="selectAllWeeks" onchange="toggleAllWeeks(this.checked)" 
-                                                   style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
-                                        </div>
-                                        <div style="font-weight: bold;">Hafta</div>
-                                        <div style="font-weight: bold;">Tarih</div>
-                                        <div style="font-weight: bold;">Ders Saati</div>
-                                        <div style="font-weight: bold;">Ünite</div>
-                                        <div style="font-weight: bold;">Konu</div>
-                                        <div style="font-weight: bold;">Kazanım</div>
-                                        <div style="font-weight: bold;">Araç Gereç</div>
-                                        <div style="font-weight: bold;">Yöntem/Teknik</div>
-                                        <div style="font-weight: bold;">🔧</div>
-                                    </div>
-                                    {/* Haftalık planlar buraya JS ile eklenecek */}
-                                </div>
-
-                                <div style="text-align: center; margin-top: 20px;">
-                                    <button type="button" class="add-unite-btn" onclick="switchTab('arac-gerec')" style="background: #95a5a6;">
-                                        ⬅️ Araç Gereçlere Dön
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Tab 4: Kaydedilen Planlar -->
+                           </div>
                         <div id="kaydedilen-planlar" class="tab-panel">
-                            <div class="section">
-                                <h2 class="section-title">💾 Kayıtlı Yıllık Planlar</h2>
-                                <div id="savedPlansList" style="margin-bottom: 20px;">
-                                    {/* Kayıtlı planlar buraya JS ile eklenecek */}
-                                    <p>Yüklenecek kayıtlı plan bulunamadı.</p>
-                                </div>
-                                <div class="form-group">
-                                    <label for="newPlanName">Yeni Plan Adı (Kaydetmek için):</label>
-                                    <input type="text" id="newPlanName" placeholder="Örn: 9. Sınıf Matematik 2025-2026">
-                                </div>
-                                <button type="button" class="add-unite-btn" onclick="saveCurrentPlan()" style="background: #27ae60; width: 100%; margin-bottom:10px;">
-                                    💾 Mevcut Planı Kaydet
-                                </button>
-                                <button type="button" class="add-unite-btn" onclick="switchTab('yillik-plan')" style="background: #95a5a6; width: 100%; margin-bottom:0;">
-                                    📅 Yıllık Plan Düzenleyiciye Dön
-                                </button>
                             </div>
-                        </div>
 
                         <div class="loading" id="loading">
                             <div class="spinner"></div>
