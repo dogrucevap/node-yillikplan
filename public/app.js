@@ -38,8 +38,10 @@ function navigateToView(targetViewId) {
 
     if (!targetView || targetViewId === currentSidebarView) return;
 
-    // Geriye gidiliyorsa animasyon yönünü tersine çevir (isteğe bağlı)
-    const isNavigatingBack = targetViewId === 'mainMenuView';
+    const isNavigatingBack = targetViewId === 'mainMenuView' || 
+                           (currentSidebarView === 'ogretmenEkleView' && targetViewId === 'ogretmenYonetimiView') ||
+                           (currentSidebarView === 'ogretmenDuzenleView' && targetViewId === 'ogretmenYonetimiView');
+
 
     views.forEach(view => {
         view.classList.remove('prev-view', 'active-view');
@@ -51,37 +53,51 @@ function navigateToView(targetViewId) {
     
     targetView.classList.add('active-view');
     
-    // Ana menüye dönerken prev-view'i hemen kaldır
     if (isNavigatingBack && currentActiveView) {
          setTimeout(() => {
             currentActiveView.classList.remove('prev-view');
-         }, 300); // transition süresiyle eşleşmeli
+         }, 300); 
     }
     
     currentSidebarView = targetViewId;
 
     // Başlığı ve geri butonunu güncelle
     if (sidebarTitle && sidebarGlobalBackBtn) {
-        if (targetViewId === 'mainMenuView') {
-            sidebarTitle.textContent = 'Ayarlar';
-            sidebarGlobalBackBtn.style.display = 'none';
-        } else if (targetViewId === 'aracGerecView') {
-            sidebarTitle.textContent = 'Araç-Gereç Yönetimi';
-            sidebarGlobalBackBtn.style.display = 'inline-block';
-        } else if (targetViewId === 'dersSaatiView') {
-            sidebarTitle.textContent = 'Ders Saati Yönetimi';
-            sidebarGlobalBackBtn.style.display = 'inline-block';
-        } else if (targetViewId === 'yontemTeknikView') {
-            sidebarTitle.textContent = 'Yöntem ve Teknik Yönetimi';
-            sidebarGlobalBackBtn.style.display = 'inline-block';
-        } else if (targetViewId === 'ogretmenYonetimiView') {
-            sidebarTitle.textContent = 'Müdür ve Öğretmenler';
-            sidebarGlobalBackBtn.style.display = 'inline-block';
-            sidebarGlobalBackBtn.dataset.viewTarget = 'mainMenuView'; // Geri dönüş ana menüye
-        } else if (targetViewId === 'ogretmenEkleView') {
-            sidebarTitle.textContent = 'Yeni Müdür/Öğretmen Ekle';
-            sidebarGlobalBackBtn.style.display = 'inline-block';
-            sidebarGlobalBackBtn.dataset.viewTarget = 'ogretmenYonetimiView'; // Geri dönüş öğretmen yönetimine
+        sidebarGlobalBackBtn.style.display = 'inline-block'; 
+        sidebarGlobalBackBtn.dataset.viewTarget = 'mainMenuView'; 
+
+        switch (targetViewId) {
+            case 'mainMenuView':
+                sidebarTitle.textContent = 'Ayarlar';
+                sidebarGlobalBackBtn.style.display = 'none';
+                break;
+            case 'aracGerecView':
+                sidebarTitle.textContent = 'Araç-Gereç Yönetimi';
+                break;
+            case 'dersSaatiView':
+                sidebarTitle.textContent = 'Ders Saati Yönetimi';
+                break;
+            case 'yontemTeknikView':
+                sidebarTitle.textContent = 'Yöntem ve Teknik Yönetimi';
+                break;
+            case 'okulMuduruView':
+                sidebarTitle.textContent = 'Okul Müdürü Yönetimi';
+                break;
+            case 'ogretmenYonetimiView':
+                sidebarTitle.textContent = 'Öğretmen Yönetimi';
+                break;
+            case 'ogretmenEkleView': 
+                sidebarTitle.textContent = 'Yeni Öğretmen Ekle';
+                sidebarGlobalBackBtn.dataset.viewTarget = 'ogretmenYonetimiView';
+                break;
+            case 'ogretmenDuzenleView':
+                sidebarTitle.textContent = 'Öğretmen Düzenle';
+                sidebarGlobalBackBtn.dataset.viewTarget = 'ogretmenYonetimiView';
+                break;
+            default:
+                sidebarTitle.textContent = 'Ayarlar'; 
+                sidebarGlobalBackBtn.style.display = 'none';
+                break;
         }
     }
 }
@@ -170,11 +186,11 @@ function applyDersSaatiToAll() {
         return;
     }
     const newDersSaati = seciliDersSaati;
-    document.getElementById('dersSaati').value = newDersSaati; // Ana formdaki inputu da güncelle
+    document.getElementById('dersSaati').value = newDersSaati; 
     baseAcademicPlan.forEach(hafta => {
         hafta.dersSaati = newDersSaati;
     });
-    updateAllWeekDates(); // Bu fonksiyon renderYillikPlan'ı çağırarak tabloyu günceller
+    updateAllWeekDates(); 
     showMessage(`${newDersSaati} ders saati tüm haftalara uygulandı.`, "success");
 }
 
@@ -185,8 +201,9 @@ let baseAcademicPlan = [];
 let currentEditingPlanId = null;
 let tumAracGerecListesi = [];
 let tumYontemTeknikListesi = [];
-let tumOgretmenlerListesi = []; // Yeni global değişken
-let planaEklenenOgretmenler = []; // Yeni global değişken
+let tumPersonalListesi = []; // Müdür ve öğretmenleri tutacak birleşik liste
+let planaEklenenPersonal = []; // Plana eklenen müdür ve öğretmenler
+
 const TATIL_DONEMLERI = { ARA_TATIL_1: { duration: 1, afterAcademicWeek: 9, label: "1. Ara Tatil" }, YARIYIL_TATILI: { duration: 2, afterAcademicWeek: 18, label: "Yarıyıl Tatili" }, ARA_TATIL_2: { duration: 1, afterAcademicWeek: 27, label: "2. Ara Tatil" }};
 const TOPLAM_AKADEMIK_HAFTA = 36;
 let draggedItemIndex = null;
@@ -211,7 +228,7 @@ function populateSidebarAracGerec() {
     const listContainer = document.getElementById('sidebarAracGerecList');
     if (!listContainer) return;
     listContainer.innerHTML = '';
-    const selectedItems = getSelectedSidebarAracGerec(); // Mevcut seçili olanları al
+    const selectedItems = getSelectedSidebarAracGerec(); 
 
     tumAracGerecListesi.sort().forEach(item => {
         const wrapper = document.createElement('div');
@@ -224,11 +241,8 @@ function populateSidebarAracGerec() {
         if (selectedItems.includes(item)) {
             button.classList.add('selected');
         }
-        button.onclick = () => { // Tıklama olayı zaten toggle yapıyor, bu kısım doğru.
+        button.onclick = () => { 
             button.classList.toggle('selected');
-            // İsteğe bağlı: Seçim değiştiğinde bir eylem tetiklenebilir.
-            // Örneğin, seçili araç-gereçleri bir yerde göstermek veya
-            // ilgili haftalara uygulama butonlarını aktif/pasif etmek.
         };
 
         const deleteBtn = document.createElement('button');
@@ -314,7 +328,7 @@ function populateSidebarYontemTeknik() {
     const listContainer = document.getElementById('sidebarYontemTeknikList');
     if (!listContainer) return;
     listContainer.innerHTML = '';
-    const selectedItems = getSelectedSidebarYontemTeknik(); // Mevcut seçili olanları al
+    const selectedItems = getSelectedSidebarYontemTeknik(); 
 
     tumYontemTeknikListesi.sort().forEach(item => {
         const wrapper = document.createElement('div');
@@ -327,9 +341,8 @@ function populateSidebarYontemTeknik() {
         if (selectedItems.includes(item)) {
             button.classList.add('selected');
         }
-        button.onclick = () => { // Tıklama olayı zaten toggle yapıyor, bu kısım doğru.
+        button.onclick = () => { 
             button.classList.toggle('selected');
-            // İsteğe bağlı: Seçim değiştiğinde bir eylem tetiklenebilir.
         };
 
         const deleteBtn = document.createElement('button');
@@ -478,289 +491,402 @@ function updateSidebarActionButtonsState() {
     if(esitleSeciliBtn) esitleSeciliBtn.disabled = !hasSelectedWeeks;
     if(ekleSeciliBtn) ekleSeciliBtn.disabled = !hasSelectedWeeks;
 
-    // Müdür ve Öğretmenler için buton durumu
-    const addSelectedOgretmenToPlanBtn = document.getElementById('addSelectedOgretmenToPlanBtn');
-    if (addSelectedOgretmenToPlanBtn) {
-        const selectedOgretmenler = document.querySelectorAll('#sidebarOgretmenList .ogretmen-item-button.selected');
-        addSelectedOgretmenToPlanBtn.disabled = selectedOgretmenler.length === 0;
-    }
+    updateAddSelectedOgretmenlerToPlanBtnState();
+    const addMudurBtn = document.getElementById('addSelectedMudurToPlanBtn');
+    if(addMudurBtn) addMudurBtn.disabled = !document.querySelector('#sidebarMudurList .mudur-item-button.selected');
+
 }
 
-// --- MÜDÜR VE ÖĞRETMEN YÖNETİMİ ---
-let currentEditingOgretmenId = null; // Düzenleme için
+// --- MÜDÜR YÖNETİMİ ---
+let selectedMudurId = null; 
 
-async function loadAllOgretmenler() {
+async function loadAllPersonal() { // Hem müdürleri hem öğretmenleri yükler
     try {
-        const response = await fetch('/api/ogretmenler');
-        if (!response.ok) throw new Error('Öğretmen listesi sunucudan yüklenemedi.');
+        const response = await fetch('/api/ogretmenler'); 
+        if (!response.ok) throw new Error('Personel listesi sunucudan yüklenemedi.');
         const data = await response.json();
-        // Gelen veri: [{id, ad_soyad, unvan}, ...]
-        // İstemci tarafında kullanılan format: {id, name, branch, isMudur}
-        tumOgretmenlerListesi = Array.isArray(data) ? data.map(o => ({
+        tumPersonalListesi = Array.isArray(data) ? data.map(o => ({
             id: o.id,
             name: o.ad_soyad,
-            branch: o.unvan,
+            branch: o.unvan, // Sunucudan gelen 'unvan'ı 'branch' olarak sakla
             isMudur: o.unvan ? o.unvan.toLowerCase().includes('müdür') : false
         })) : [];
-        populateSidebarOgretmenList();
+
+        populateSidebarMudurList(tumPersonalListesi.filter(p => p.isMudur));
+        populateSidebarOgretmenList(tumPersonalListesi.filter(p => !p.isMudur));
+
     } catch (error) {
-        console.error("Öğretmen listesi yükleme hatası:", error);
-        showMessage(`❌ Öğretmen listesi yüklenemedi: ${error.message}`, 'error');
-        tumOgretmenlerListesi = []; // Hata durumunda boş liste
-        populateSidebarOgretmenList();
+        console.error("Personel listesi yükleme hatası:", error);
+        showMessage(`❌ Personel listesi yüklenemedi: ${error.message}`, 'error');
+        tumPersonalListesi = [];
+        populateSidebarMudurList([]);
+        populateSidebarOgretmenList([]);
     }
 }
 
-function populateSidebarOgretmenList() {
+
+function populateSidebarMudurList(mudurler) {
+    const listContainer = document.getElementById('sidebarMudurList');
+    if (!listContainer) return;
+    listContainer.innerHTML = '';
+
+    mudurler.sort((a, b) => (a.name || '').localeCompare(b.name || '')).forEach(mudur => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'item-button-wrapper';
+
+        const button = document.createElement('button');
+        button.className = 'item-button mudur-item-button'; 
+        button.textContent = mudur.name;
+        button.dataset.id = mudur.id;
+
+        const planaEkliMudur = planaEklenenPersonal.find(p => p.isMudur && p.id === mudur.id);
+        if (planaEkliMudur) {
+            button.classList.add('selected');
+            selectedMudurId = mudur.id; 
+        }
+
+        button.onclick = () => {
+            const isCurrentlySelected = button.classList.contains('selected');
+            document.querySelectorAll('#sidebarMudurList .mudur-item-button').forEach(btn => btn.classList.remove('selected'));
+            if (!isCurrentlySelected) {
+                button.classList.add('selected');
+                selectedMudurId = mudur.id; 
+            } else {
+                selectedMudurId = null; // Seçimi kaldır
+            }
+            document.getElementById('addSelectedMudurToPlanBtn').disabled = !selectedMudurId;
+        };
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'item-delete-btn';
+        deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+        deleteBtn.title = `"${mudur.name}" adlı müdürü sil`;
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            deletePersonal(mudur.id, mudur.name, true);
+        };
+        
+        wrapper.appendChild(button);
+        wrapper.appendChild(deleteBtn);
+        listContainer.appendChild(wrapper);
+    });
+    document.getElementById('addSelectedMudurToPlanBtn').disabled = !selectedMudurId;
+}
+
+async function addCustomMudur() {
+    const inputElement = document.getElementById('customMudurInput');
+    if (!inputElement) return;
+    const mudurName = inputElement.value.trim();
+    if (!mudurName) {
+        showMessage("Lütfen eklenecek müdürün adını girin.", "error"); return;
+    }
+    try {
+        const response = await fetch('/api/ogretmenler', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ad_soyad: mudurName, unvan: "Okul Müdürü" })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || `Sunucu hatası: ${response.status}`);
+        
+        await loadAllPersonal(); 
+        inputElement.value = ''; 
+        showMessage(`"${mudurName}" (Okul Müdürü) başarıyla eklendi.`, 'success');
+    } catch (error) {
+        console.error("Yeni müdür ekleme hatası:", error);
+        showMessage(`❌ Müdür eklenirken hata: ${error.message}`, 'error');
+    }
+}
+
+async function deletePersonal(personId, personName, isDeletingMudur = false) {
+    const typeText = isDeletingMudur ? "müdürü" : "öğretmeni";
+    if (!confirm(`"${personName}" adlı ${typeText} silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`)) return;
+    try {
+        const response = await fetch(`/api/ogretmenler/${personId}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Silme başarısız');
+        
+        showMessage(`"${personName}" başarıyla silindi.`, "success");
+        await loadAllPersonal(); 
+        
+        const removedPersonIndex = planaEklenenPersonal.findIndex(p => p.id === personId);
+        if (removedPersonIndex > -1) {
+            planaEklenenPersonal.splice(removedPersonIndex, 1);
+            if (isDeletingMudur && selectedMudurId === personId) {
+                selectedMudurId = null; 
+            }
+            sortAndRenderImzaAlani();
+        }
+    } catch (error) {
+        showMessage(`❌ ${typeText.charAt(0).toUpperCase() + typeText.slice(1)} silme hatası: ${error.message}`, "error");
+    }
+}
+
+function addSelectedMudurToPlan() {
+    if (!selectedMudurId) {
+        // Eğer seçili müdür yoksa ve planda zaten bir müdür varsa, onu kaldır
+        const existingMudurIndex = planaEklenenPersonal.findIndex(p => p.isMudur);
+        if (existingMudurIndex > -1) {
+            planaEklenenPersonal.splice(existingMudurIndex, 1);
+            sortAndRenderImzaAlani();
+            showMessage("Plandaki müdür kaldırıldı.", "success");
+        } else {
+            showMessage("Lütfen plana eklemek için bir müdür seçin.", "error");
+        }
+        return;
+    }
+    const secilenMudurData = tumPersonalListesi.find(p => p.id === selectedMudurId && p.isMudur);
+    
+    if (!secilenMudurData) {
+         showMessage("Seçilen müdür bilgisi bulunamadı.", "error");
+         return;
+    }
+    planaEklenenPersonal = planaEklenenPersonal.filter(p => !p.isMudur); // Önceki müdürü kaldır
+    planaEklenenPersonal.push({ ...secilenMudurData, branch: "Okul Müdürü", isMudur: true });
+    sortAndRenderImzaAlani();
+    showMessage(`"${secilenMudurData.name}" (Okul Müdürü) plana eklendi.`, "success");
+}
+
+function sortAndRenderImzaAlani() {
+    planaEklenenPersonal.sort((a, b) => {
+        if (a.isMudur && !b.isMudur) return 1;  
+        if (!a.isMudur && b.isMudur) return -1;
+        return (a.name || '').localeCompare(b.name || '');
+    });
+    renderPlanImzaAlanlari();
+}
+
+
+// --- ÖĞRETMEN YÖNETİMİ ---
+let currentEditingOgretmenId = null; 
+
+function populateSidebarOgretmenList(ogretmenler) { 
     const listContainer = document.getElementById('sidebarOgretmenList');
     if (!listContainer) return;
     listContainer.innerHTML = '';
 
-    // Silme butonu için bir fonksiyon (sunucuya istek gönderecek)
-    async function deleteOgretmenFromDb(ogretmenId, ogretmenAdi) {
-        if (!confirm(`"${ogretmenAdi}" adlı kişiyi veritabanından kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`)) return;
-        try {
-            const response = await fetch(`/api/ogretmenler/${ogretmenId}`, { method: 'DELETE' });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || 'Silme başarısız');
-            
-            showMessage(`"${ogretmenAdi}" başarıyla veritabanından silindi.`, "success");
-            await loadAllOgretmenler(); // Listeyi yeniden yükle
-            // Plana eklenmişse plandan da çıkar
-            removeOgretmenFromPlan(ogretmenId); // Bu fonksiyon zaten renderPlanImzaAlanlari ve sidebar seçimini günceller
-        } catch (error) {
-            showMessage(`❌ Veritabanından silme hatası: ${error.message}`, "error");
-        }
-    }
-
-
-    tumOgretmenlerListesi.sort((a, b) => (a.name || '').localeCompare(b.name || '')).forEach(ogretmen => {
-        const wrapper = document.createElement('div'); // Her öğretmen için bir sarmalayıcı
+    ogretmenler.sort((a, b) => (a.name || '').localeCompare(b.name || '')).forEach(ogretmen => {
+        const wrapper = document.createElement('div');
         wrapper.className = 'ogretmen-item-wrapper';
 
-
         const button = document.createElement('button');
-        button.className = 'ogretmen-item-button';
+        button.className = 'ogretmen-item-button'; 
         button.dataset.id = ogretmen.id;
-        // Plana eklenen öğretmenler listesinde bu ID varsa seçili yap
-        if (planaEklenenOgretmenler.some(p => p.id === ogretmen.id)) {
+        if (planaEklenenPersonal.some(p => p.id === ogretmen.id && !p.isMudur)) {
             button.classList.add('selected');
         }
         button.onclick = () => {
             button.classList.toggle('selected');
-            updateSidebarActionButtonsState();
+            updateAddSelectedOgretmenlerToPlanBtnState();
         };
 
         const infoDiv = document.createElement('div');
         infoDiv.className = 'ogretmen-info';
         const nameSpan = document.createElement('span');
         nameSpan.className = 'ogretmen-name';
-        nameSpan.textContent = ogretmen.name; // `ad_soyad` yerine `name`
+        nameSpan.textContent = ogretmen.name;
         const branchSpan = document.createElement('span');
         branchSpan.className = 'ogretmen-branch';
-        branchSpan.textContent = `${ogretmen.branch}${ogretmen.isMudur ? ' (Müdür)' : ''}`; // `unvan` yerine `branch`
+        branchSpan.textContent = ogretmen.branch || 'Branş Yok';
         infoDiv.appendChild(nameSpan);
         infoDiv.appendChild(document.createElement('br'));
         infoDiv.appendChild(branchSpan);
-
         button.appendChild(infoDiv);
-        // wrapper.appendChild(button); // Butonu sarmalayıcıya ekle
 
-        // Düzenleme ve Silme butonları için ayrı bir div
         const actionsDiv = document.createElement('div');
         actionsDiv.className = 'ogretmen-item-actions';
 
         const editBtn = document.createElement('button');
-        editBtn.className = 'ogretmen-edit-btn icon-btn'; // icon-btn sınıfı eklendi
-        editBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>'; // Kalem ikonu
+        editBtn.className = 'ogretmen-edit-btn icon-btn';
+        editBtn.innerHTML = '<i class="fas fa-chevron-right"></i>'; 
         editBtn.title = `"${ogretmen.name}" kişisini düzenle`;
         editBtn.onclick = (e) => {
-            e.stopPropagation(); 
-            currentEditingOgretmenId = ogretmen.id;
-            document.getElementById('ogretmenAdiSoyadiInput').value = ogretmen.name;
-            document.getElementById('ogretmenUnvanInput').value = ogretmen.branch; // unvan input'u olmalı
-            // isMudurCheckbox'ı unvana göre ayarla (Müdür/Müdür Yrd. vs)
-            const unvanLower = (ogretmen.branch || "").toLowerCase();
-            document.getElementById('isMudurCheckbox').checked = unvanLower.includes('müdür');
-            navigateToView('ogretmenEkleView');
+            e.stopPropagation();
+            navigateToOgretmenDuzenleView(ogretmen.id);
         };
         
         const deleteDbBtn = document.createElement('button');
-        deleteDbBtn.className = 'ogretmen-delete-db-btn icon-btn'; // icon-btn sınıfı eklendi
-        deleteDbBtn.innerHTML = '<i class="fas fa-trash-alt"></i>'; // Çöp kutusu ikonu
+        deleteDbBtn.className = 'ogretmen-delete-db-btn icon-btn';
+        deleteDbBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
         deleteDbBtn.title = `"${ogretmen.name}" kişisini veritabanından sil`;
         deleteDbBtn.onclick = (e) => {
             e.stopPropagation();
-            deleteOgretmenFromDb(ogretmen.id, ogretmen.name);
+            deletePersonal(ogretmen.id, ogretmen.name, false);
         };
 
         actionsDiv.appendChild(editBtn);
         actionsDiv.appendChild(deleteDbBtn);
         
-        // button.appendChild(actionsDiv); // Butonun içine değil, sarmalayıcıya
-        wrapper.appendChild(button); // Önce ana tıklanabilir alanı ekle
-        wrapper.appendChild(actionsDiv); // Sonra aksiyon butonlarını ekle
-
+        wrapper.appendChild(button);
+        wrapper.appendChild(actionsDiv);
         listContainer.appendChild(wrapper);
     });
-    updateSidebarActionButtonsState();
+    updateAddSelectedOgretmenlerToPlanBtnState();
 }
 
-async function saveOgretmen() {
-    const adiSoyadiInput = document.getElementById('ogretmenAdiSoyadiInput');
-    const unvanInput = document.getElementById('ogretmenUnvanInput'); // ID 'ogretmenBransInput' yerine 'ogretmenUnvanInput' olmalı (HTML'de de)
+function navigateToOgretmenDuzenleView(ogretmenId) {
+    const ogretmen = tumPersonalListesi.find(p => p.id === ogretmenId && !p.isMudur); 
+    if (ogretmen) {
+        document.getElementById('duzenlenenOgretmenIdInput').value = ogretmen.id;
+        document.getElementById('duzenlenenOgretmenAdiSoyadiInput').value = ogretmen.name;
+        document.getElementById('duzenlenenOgretmenBransInput').value = ogretmen.branch;
+        navigateToView('ogretmenDuzenleView');
+    } else {
+        showMessage("Düzenlenecek öğretmen bulunamadı.", "error");
+    }
+}
 
+async function saveYeniOgretmen() {
+    const adiSoyadiInput = document.getElementById('yeniOgretmenAdiSoyadiInput');
+    const bransInput = document.getElementById('yeniOgretmenBransInput');
     const ad_soyad = adiSoyadiInput.value.trim();
-    const unvan = unvanInput.value.trim();
-    // isMudurCheckbox artık doğrudan sunucuya gönderilmiyor, unvan üzerinden belirleniyor.
-    // Ancak istemci tarafında `planaEklenenOgretmenler` için kullanılabilir.
+    const unvan = bransInput.value.trim(); 
 
     if (!ad_soyad || !unvan) {
-        showMessage("Lütfen ad soyad ve unvan alanlarını doldurun.", "error");
+        showMessage("Lütfen öğretmen adı ve branşını girin.", "error"); return;
+    }
+    if (unvan.toLowerCase().includes("müdür")) {
+        showMessage("Müdür eklemek için lütfen 'Okul Müdürü Yönetimi' menüsünü kullanın.", "warning");
         return;
     }
-
-    // Sunucuya gönderilecek veri
-    const dataToSend = { ad_soyad, unvan };
-    let url = '/api/ogretmenler';
-    let method = 'POST';
-
-    // NOT: Sunucu şu anda öğretmen güncelleme (PUT /api/ogretmenler/:id) desteklemiyor.
-    // Bu yüzden currentEditingOgretmenId olsa bile, bu ID'yi kullanarak bir güncelleme
-    // API çağrısı yapamayız. Bu özellik eklenene kadar, "düzenleme" aslında
-    // mevcut bir öğretmenin bilgilerini forma yükler ve kullanıcı "Kaydet"e bastığında
-    // YENİ bir öğretmen olarak eklemeye çalışır (eğer ad_soyad UNIQUE ise).
-    // Bu ideal değil, ancak sunucu tarafı güncellenene kadar geçici bir durum.
-    if (currentEditingOgretmenId) {
-        // Burada PUT isteği olmalıydı ama sunucu desteklemiyor.
-        // Kullanıcıyı bilgilendirebilir veya yeni kayıt olarak devam edebiliriz.
-        // Şimdilik, her zaman POST ile yeni ekleme yapıyoruz.
-        // Eğer aynı ad_soyad ile biri varsa, sunucu UNIQUE constraint hatası verecektir.
-        console.warn(`Düzenleme modu aktif (ID: ${currentEditingOgretmenId}), ancak sunucu PUT desteklemiyor. Yeni kayıt olarak POST edilecek.`);
-    }
-
     try {
-        const response = await fetch(url, { // Her zaman POST
+        const response = await fetch('/api/ogretmenler', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dataToSend)
+            body: JSON.stringify({ ad_soyad, unvan }) 
         });
         const result = await response.json();
-        if (!response.ok) throw new Error(result.error || `Sunucu hatası: ${response.status}`);
+        if (!response.ok) throw new Error(result.error || 'Öğretmen kaydedilemedi.');
         
-        await loadAllOgretmenler(); // Listeyi ve dropdown'ı günceller
+        await loadAllPersonal(); 
         adiSoyadiInput.value = '';
-        unvanInput.value = '';
-        document.getElementById('isMudurCheckbox').checked = false; // Bu checkbox hala UI'da varsa sıfırla
-        currentEditingOgretmenId = null;
+        bransInput.value = '';
         showMessage(`"${ad_soyad}" (${unvan}) başarıyla eklendi.`, 'success');
         navigateToView('ogretmenYonetimiView');
     } catch (error) {
-        console.error("Öğretmen kaydetme hatası:", error);
-        showMessage(`❌ Öğretmen kaydedilirken hata: ${error.message}`, 'error');
+        showMessage(`❌ Yeni öğretmen eklenirken hata: ${error.message}`, 'error');
     }
 }
 
-// async function deleteOgretmen(ogretmenId) { // Şimdilik silme butonu yok, düzenleme var.
-//     if (!confirm("Bu kişiyi silmek istediğinizden emin misiniz?")) return;
-//     try {
-//         const response = await fetch(`/api/ogretmenler/${ogretmenId}`, { method: 'DELETE' });
-//         if (!response.ok) { const res = await response.json(); throw new Error(res.error || 'Silme başarısız'); }
-//         await loadAllOgretmenler();
-//         // Plana eklenmişse plandan da çıkar
-//         planaEklenenOgretmenler = planaEklenenOgretmenler.filter(o => o.id !== ogretmenId);
-//         renderPlanImzaAlanlari();
-//         showMessage("Kişi başarıyla silindi.", "success");
-//     } catch (error) {
-//         showMessage(`❌ Silme hatası: ${error.message}`, "error");
-//     }
-// }
+async function saveDuzenlenenOgretmen() {
+    const ogretmenId = document.getElementById('duzenlenenOgretmenIdInput').value;
+    const adiSoyadiInput = document.getElementById('duzenlenenOgretmenAdiSoyadiInput');
+    const bransInput = document.getElementById('duzenlenenOgretmenBransInput');
+    const ad_soyad = adiSoyadiInput.value.trim();
+    const unvan = bransInput.value.trim();
 
-function getSelectedSidebarOgretmenler() {
+    if (!ad_soyad || !unvan) {
+        showMessage("Lütfen öğretmen adı ve branşını girin.", "error"); return;
+    }
+    if (unvan.toLowerCase().includes("müdür")) {
+        showMessage("Bir öğretmenin unvanı 'müdür' içeremez. Müdürleri ayrı yönetin.", "warning");
+        return;
+    }
+    
+    console.warn("Öğretmen düzenleme sunucu tarafında tam desteklenmiyor. Yeni kayıt olarak deneniyor.");
+    try {
+        // İdealde burada PUT /api/ogretmenler/:id olmalı
+        const response = await fetch('/api/ogretmenler', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ad_soyad, unvan }) 
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            if (response.status === 409) { 
+                 showMessage(`"${ad_soyad}" adlı öğretmen zaten mevcut. Düzenleme için sunucu güncellemesi gereklidir.`, "warning");
+            } else {
+                throw new Error(result.error || `Sunucu hatası: ${response.status}`);
+            }
+        } else {
+            showMessage(`"${ad_soyad}" (${unvan}) bilgileri (yeni kayıt olarak) güncellendi/eklendi.`, 'success');
+        }
+        
+        await loadAllPersonal(); 
+        navigateToView('ogretmenYonetimiView');
+    } catch (error) {
+        showMessage(`❌ Öğretmen güncellenirken/eklenirken hata: ${error.message}`, 'error');
+    }
+}
+
+
+function updateAddSelectedOgretmenlerToPlanBtnState() {
+    const btn = document.getElementById('addSelectedOgretmenlerToPlanBtn');
+    if (btn) {
+        const selectedOgretmenler = document.querySelectorAll('#sidebarOgretmenList .ogretmen-item-button.selected');
+        btn.disabled = selectedOgretmenler.length === 0;
+    }
+}
+
+
+function getSelectedSidebarOgretmenler() { // Sadece öğretmenleri (müdür olmayan) döndürür
     const selected = [];
     document.querySelectorAll('#sidebarOgretmenList .ogretmen-item-button.selected').forEach(btn => {
-        const ogretmen = tumOgretmenlerListesi.find(o => String(o.id) === String(btn.dataset.id)); // ID'leri string olarak karşılaştır
+        const ogretmen = tumPersonalListesi.find(p => p.id.toString() === btn.dataset.id && !p.isMudur);
         if (ogretmen) {
             selected.push(ogretmen);
-        } else {
-            console.warn(`Eşleşen öğretmen bulunamadı. Buton ID: ${btn.dataset.id}, Liste ID'leri: ${tumOgretmenlerListesi.map(item => item.id)}`);
         }
     });
     return selected;
 }
 
-function addSelectedOgretmenToPlan() {
-    const secilenler = getSelectedSidebarOgretmenler();
-    if (secilenler.length === 0) {
-        showMessage("Lütfen plandaki imza alanına eklemek için en az bir müdür/öğretmen seçin.", "error");
+function addSelectedOgretmenlerToPlan() {
+    const secilenOgretmenler = getSelectedSidebarOgretmenler(); 
+    if (secilenOgretmenler.length === 0) {
+        showMessage("Lütfen plana eklemek için en az bir öğretmen seçin.", "error");
         return;
     }
 
-    let mudurZatenVar = planaEklenenOgretmenler.some(o => o.isMudur);
-
-    secilenler.forEach(secilen => {
-        if (secilen.isMudur) {
-            if (mudurZatenVar && !planaEklenenOgretmenler.find(p => p.id === secilen.id && p.isMudur)) {
-                // Eğer zaten bir müdür varsa VE seçilen müdür plandaki müdür değilse (yani farklı bir müdür eklenmeye çalışılıyorsa)
-                showMessage(`Plana zaten bir müdür ekli. İkinci bir müdür ekleyemezsiniz. Mevcut müdürü kaldırıp yenisini ekleyebilirsiniz.`, "warning");
-                // Sidebar'daki bu müdürün seçimini kaldırabiliriz ki kullanıcı tekrar denemesin.
-                const sidebarButton = document.querySelector(`#sidebarOgretmenList .ogretmen-item-button[data-id="${secilen.id}"]`);
-                if (sidebarButton) sidebarButton.classList.remove('selected');
-                return; // Bu müdürü ekleme
-            }
-            mudurZatenVar = true; // Eğer bu ilk müdürse veya aynı müdür tekrar seçildiyse (ki bu durumda eklenmeyecek)
-        }
-
-        if (!planaEklenenOgretmenler.find(p => p.id === secilen.id)) {
-            planaEklenenOgretmenler.push({...secilen});
+    secilenOgretmenler.forEach(secilen => {
+        if (!planaEklenenPersonal.find(p => p.id === secilen.id && !p.isMudur)) {
+            planaEklenenPersonal.push({...secilen, isMudur: false}); 
         }
     });
-
-    // Öğretmenleri sırala: Önce öğretmenler (alfabetik), sonra müdür (eğer varsa en sonda)
-    planaEklenenOgretmenler.sort((a, b) => {
-        if (a.isMudur && !b.isMudur) return 1;  // Müdürler sona gelsin
-        if (!a.isMudur && b.isMudur) return -1; // Öğretmenler öne gelsin
-        return (a.name || '').localeCompare(b.name || ''); // Aynı türdekileri alfabetik sırala
-    });
-
-    renderPlanImzaAlanlari();
-    if(secilenler.length > 0) showMessage("Seçilen kişiler imza alanına eklendi/güncellendi.", "success");
-    updateSidebarActionButtonsState(); // Buton durumlarını güncelle
+    sortAndRenderImzaAlani();
+    if(secilenOgretmenler.length > 0) showMessage("Seçilen öğretmenler imza alanına eklendi/güncellendi.", "success");
 }
 
-function removeOgretmenFromPlan(ogretmenId) {
-    planaEklenenOgretmenler = planaEklenenOgretmenler.filter(o => o.id !== ogretmenId);
-    renderPlanImzaAlanlari();
-    // Sidebar'daki seçimi de kaldır
-    const sidebarButton = document.querySelector(`#sidebarOgretmenList .ogretmen-item-button[data-id="${ogretmenId}"]`);
-    if (sidebarButton) sidebarButton.classList.remove('selected');
-    updateSidebarActionButtonsState();
+function removeOgretmenFromPlan(personId) { 
+    planaEklenenPersonal = planaEklenenPersonal.filter(p => p.id !== personId);
+    sortAndRenderImzaAlani();
+    
+    const mudurButton = document.querySelector(`#sidebarMudurList .mudur-item-button[data-id="${personId}"]`);
+    if (mudurButton) mudurButton.classList.remove('selected');
+    
+    const ogretmenButton = document.querySelector(`#sidebarOgretmenList .ogretmen-item-button[data-id="${personId}"]`);
+    if (ogretmenButton) ogretmenButton.classList.remove('selected');
+
+    if (selectedMudurId === personId) selectedMudurId = null;
+
+    updateAddSelectedOgretmenlerToPlanBtnState();
+    const addMudurBtn = document.getElementById('addSelectedMudurToPlanBtn');
+    if(addMudurBtn) addMudurBtn.disabled = !selectedMudurId && !planaEklenenPersonal.some(p => p.isMudur);
 }
 
 function renderPlanImzaAlanlari() {
     const container = document.getElementById('planImzaAlanlariContainer');
     if (!container) return;
     container.innerHTML = '';
-    if (planaEklenenOgretmenler.length === 0) {
+    if (planaEklenenPersonal.length === 0) {
         container.innerHTML = '<p style="padding: 10px; color: #777; text-align: center;">İmza alanına eklenmiş kimse yok.</p>';
         return;
     }
-    planaEklenenOgretmenler.forEach(ogretmen => {
+    planaEklenenPersonal.forEach(person => {
         const wrapper = document.createElement('div');
-        wrapper.className = 'item-button-wrapper'; // Mevcut stili kullanabiliriz
+        wrapper.className = 'item-button-wrapper'; 
 
         const button = document.createElement('button');
-        button.className = 'item-button'; // Mevcut stili kullanabiliriz
-        button.textContent = `${ogretmen.name} (${ogretmen.branch}${ogretmen.isMudur ? ', Müdür' : ''})`;
-        button.disabled = true; // Sadece gösterim amaçlı
+        button.className = 'item-button'; 
+        button.textContent = `${person.name} (${person.isMudur ? "Okul Müdürü" : person.branch})`;
+        button.disabled = true; 
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'item-delete-btn';
         deleteBtn.innerHTML = '<i class="fas fa-minus"></i>';
-        deleteBtn.title = `"${ogretmen.name}" kişisini plandan kaldır`;
+        deleteBtn.title = `"${person.name}" kişisini plandan kaldır`;
         deleteBtn.onclick = (e) => {
             e.stopPropagation();
-            removeOgretmenFromPlan(ogretmen.id);
+            removeOgretmenFromPlan(person.id);
         };
         
         wrapper.appendChild(button);
@@ -770,12 +896,10 @@ function renderPlanImzaAlanlari() {
 }
 
 function getAdditionalTeachers() {
-    // planaEklenenOgretmenler listesi {id, name, branch, isMudur} formatında
-    // Sunucuya gönderilecek format {name, branch, isPrincipal}
-    return planaEklenenOgretmenler.map(o => ({
-        name: o.name,       // Bu, istemcideki ad_soyad'a karşılık gelir
-        branch: o.branch,   // Bu, istemcideki unvan'a karşılık gelir
-        isPrincipal: o.isMudur // isMudur, unvanın "müdür" içerip içermediğine göre belirlenir
+    return planaEklenenPersonal.map(p => ({
+        name: p.name,       
+        branch: p.isMudur ? "Okul Müdürü" : p.branch,   
+        isPrincipal: p.isMudur 
     }));
 }
 
@@ -790,10 +914,9 @@ function toggleYontemTeknik(academicWeekNum, item, selectedContainer) {
     const basePlanEntry = baseAcademicPlan.find(h => h.originalAcademicWeek === academicWeekNum);
     if(basePlanEntry) basePlanEntry.yontemTeknik = [...planEntry.yontemTeknik];
     updateYontemTeknikDisplay(selectedContainer, planEntry.yontemTeknik, academicWeekNum);
-    updateSidebarYontemTeknikSelectionFromPlan(planEntry.yontemTeknik); // Kenar çubuğunu güncelle
+    updateSidebarYontemTeknikSelectionFromPlan(planEntry.yontemTeknik); 
 }
 
-// Helper function to update sidebar yontem/teknik selection based on current week's items
 function updateSidebarYontemTeknikSelectionFromPlan(currentWeekYontemTeknik = []) {
     const sidebarListContainer = document.getElementById('sidebarYontemTeknikList');
     if (sidebarListContainer) {
@@ -812,7 +935,7 @@ function updateYontemTeknikDisplay(container, items, academicWeekNum) {
     container.innerHTML = '';
     (items || []).forEach(item => {
         const tag = document.createElement('span');
-        tag.className = 'arac-gerec-tag'; // Stili yeniden kullan
+        tag.className = 'arac-gerec-tag'; 
         tag.innerHTML = `${item} <span class="remove" onclick="removeYontemTeknik(${academicWeekNum}, '${item}')">×</span>`;
         container.appendChild(tag);
     });
@@ -831,7 +954,7 @@ function removeYontemTeknik(academicWeekNum, item) {
             if (baseIndex > -1) basePlanEntry.yontemTeknik.splice(baseIndex, 1);
         }
         renderYillikPlan();
-        updateSidebarYontemTeknikSelectionFromPlan(planEntry.yontemTeknik); // Kenar çubuğunu güncelle
+        updateSidebarYontemTeknikSelectionFromPlan(planEntry.yontemTeknik); 
     }
 }
 
@@ -840,7 +963,6 @@ function createYontemTeknikSelector(academicWeekNum, selectedItems = []) {
     const selected = document.createElement('div'); selected.className = 'arac-gerec-selected';
     selected.onclick = () => {
         toggleDropdown(selected.nextElementSibling);
-        // Dropdown açıldığında, bu haftanın seçili yöntem/tekniklerini al ve kenar çubuğunu güncelle
         const planEntry = yillikPlan.find(h => h.type === 'academic' && h.originalAcademicWeek === academicWeekNum);
         const currentWeekYontemTeknik = planEntry ? (planEntry.yontemTeknik || []) : [];
         updateSidebarYontemTeknikSelectionFromPlan(currentWeekYontemTeknik);
@@ -1128,16 +1250,16 @@ async function generatePlanForSaved(planId) {
     try {
         const planResponse = await fetch(`/api/plans/${planId}`);
         if (!planResponse.ok) { const errorData = await planResponse.json().catch(() => ({ message: 'Kaydedilmiş plan verisi alınamadı.' })); throw new Error(errorData.error || errorData.message || 'Kaydedilmiş plan verisi alınamadı.');}
-        const planData = await planResponse.json(); // planData.ogretmen burada ad_soyad içerir
+        const planData = await planResponse.json(); 
         const dataForDoc = { 
             okul: planData.okul, 
-            ogretmen: planData.ogretmen, // Dersi veren öğretmenin ad_soyad'ı
+            ogretmen: planData.ogretmen, 
             ders: planData.ders, 
             sinif: planData.sinif, 
             egitimOgretimYili: planData.egitim_ogretim_yili, 
             dersSaati: planData.ders_saati, 
             haftalikPlan: planData.plan_data_json || [], 
-            additionalTeachers: planData.additional_teachers_json || [] // Sunucudan gelen additional_teachers_json
+            additionalTeachers: planData.additional_teachers_json || [] 
         };
         const docResponse = await fetch('/generate-plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataForDoc) });
         if (docResponse.ok) {
@@ -1161,14 +1283,19 @@ async function saveCurrentPlan() {
         showMessage(`ℹ️ Plan adı otomatik olarak "${planName}" şeklinde belirlendi.`, 'success');
     }
 
-    // Dersi veren öğretmeni `planaEklenenOgretmenler` listesinden al
-    let dersiVerenOgretmenKayit = planaEklenenOgretmenler.find(o => o.branch && !o.branch.toLowerCase().includes('müdür'));
-     if (!dersiVerenOgretmenKayit && planaEklenenOgretmenler.length > 0) {
-        dersiVerenOgretmenKayit = planaEklenenOgretmenler[0];
+    let dersiVerenOgretmenKayit = planaEklenenPersonal.find(p => p.branch && !p.isMudur);
+     if (!dersiVerenOgretmenKayit && planaEklenenPersonal.length > 0) {
+        const nonMudurPersonal = planaEklenenPersonal.filter(p => !p.isMudur);
+        if (nonMudurPersonal.length > 0) {
+            dersiVerenOgretmenKayit = nonMudurPersonal[0];
+        } else {
+            // Eğer sadece müdür varsa, onu dersi veren olarak al (geçici çözüm)
+            dersiVerenOgretmenKayit = planaEklenenPersonal.find(p => p.isMudur);
+        }
     }
 
-    if (!dersiVerenOgretmenKayit && !currentEditingPlanId) { // Yeni plan kaydediliyorsa en az bir öğretmen/müdür imza alanında olmalı
-        showMessage("Lütfen imza alanına en az bir öğretmen/müdür ekleyin. Dersi veren öğretmen bu listeden seçilecektir.", "error");
+    if (!dersiVerenOgretmenKayit && !currentEditingPlanId) { 
+        showMessage("Lütfen imza alanına en az bir öğretmen veya müdür ekleyin. Dersi veren öğretmen bu listeden seçilecektir.", "error");
         return;
     }
     const dersiVerenOgretmenAdiKayit = dersiVerenOgretmenKayit ? dersiVerenOgretmenKayit.name : "";
@@ -1185,15 +1312,9 @@ async function saveCurrentPlan() {
         varsayilan_arac_gerec: getSelectedSidebarAracGerec(), 
         plan_data_json: yillikPlan, 
         base_academic_plan_json: baseAcademicPlan, 
-        additional_teachers_json: getAdditionalTeachers(), // Sunucu `additional_teachers_json` bekliyor olabilir, kontrol et. server.js `additional_teachers` bekliyor.
-                                                       // server.js'deki POST /api/plans endpoint'i `additional_teachers` bekliyor.
-                                                       // Bu yüzden `additional_teachers: getAdditionalTeachers()` olmalı.
+        additional_teachers: getAdditionalTeachers(), 
         plan_id: currentEditingPlanId 
     };
-    // Düzeltme: Sunucu `additional_teachers` bekliyor.
-    dataToSave.additional_teachers = getAdditionalTeachers();
-    delete dataToSave.additional_teachers_json; // Yanlış anahtarı sil
-
 
     try {
         const response = await fetch('/api/plans', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataToSave) });
@@ -1210,8 +1331,6 @@ async function loadSpecificPlan(planId) {
         if (!response.ok) throw new Error('Plan yüklenemedi.');
         const data = await response.json();
         document.getElementById('okul').value = data.okul || '';
-        // Dersi veren öğretmen bilgisi artık `additionalTeachers` (planaEklenenOgretmenler) içinde yönetilecek.
-        // `data.ogretmen` (kayıtlı plandaki ana öğretmen adı) `planaEklenenOgretmenler` listesine eklenirken dikkate alınacak.
         document.getElementById('ders').value = data.ders || '';
         document.getElementById('sinif').value = data.sinif || '';
         document.getElementById('egitimOgretimYili').value = data.egitim_ogretim_yili || '';
@@ -1221,12 +1340,11 @@ async function loadSpecificPlan(planId) {
         const savedAracGerec = Array.isArray(data.varsayilan_arac_gerec) ? data.varsayilan_arac_gerec : [];
         savedAracGerec.forEach(item => { if (!tumAracGerecListesi.includes(item)) tumAracGerecListesi.push(item); });
         populateSidebarAracGerec(); 
-        document.querySelectorAll('#sidebarAracGerecList .item-button').forEach(btn => { // Checkbox değil buton
+        document.querySelectorAll('#sidebarAracGerecList .item-button').forEach(btn => { 
             if (savedAracGerec.includes(btn.dataset.value)) btn.classList.add('selected');
             else btn.classList.remove('selected');
         });
 
-        // Yöntem ve Teknikleri yükle ve sidebar'da seçili yap
         let allYontemTeknikInPlan = [];
         const sourceForYontemTeknik = Array.isArray(data.base_academic_plan_json) 
             ? data.base_academic_plan_json 
@@ -1253,40 +1371,35 @@ async function loadSpecificPlan(planId) {
             }
         });
         
-        // Kayıtlı öğretmenleri yükle ve plana eklenenleri ayarla
-        planaEklenenOgretmenler = []; // Önce temizle
+        planaEklenenPersonal = []; 
+        selectedMudurId = null; 
         if (data.additional_teachers_json && Array.isArray(data.additional_teachers_json)) {
-            // Backend'den gelen additional_teachers_json: [{name, branch, isPrincipal}, ...]
-            // tumOgretmenlerListesi: [{id, name, branch, isMudur}, ...]
-            data.additional_teachers_json.forEach(savedTeacherInfo => {
-                // `name` (ad_soyad) ve `branch` (unvan) üzerinden eşleştirme yapıyoruz.
-                // ID olmadığı için bu %100 güvenilir olmayabilir ama mevcut yapıda en iyisi bu.
-                const foundInGlobalList = tumOgretmenlerListesi.find(globalO => 
-                    globalO.name === savedTeacherInfo.name && globalO.branch === savedTeacherInfo.branch
+            data.additional_teachers_json.forEach(savedPersonInfo => {
+                const foundInGlobalList = tumPersonalListesi.find(globalP => 
+                    globalP.name === savedPersonInfo.name && globalP.branch === savedPersonInfo.branch
                 );
                 if (foundInGlobalList) {
-                    // Eğer dersi veren öğretmen değilse ekle (çünkü o ayrı yönetiliyor)
-                    const dersiVerenOgretmenAdi = document.getElementById('dersiVerenOgretmenSelect')?.selectedOptions[0]?.text;
-                    if (foundInGlobalList.name !== dersiVerenOgretmenAdi) {
-                         if (!planaEklenenOgretmenler.find(p => p.id === foundInGlobalList.id)) {
-                            planaEklenenOgretmenler.push({...foundInGlobalList});
-                         }
+                    planaEklenenPersonal.push({...foundInGlobalList});
+                    if (foundInGlobalList.isMudur) {
+                        selectedMudurId = foundInGlobalList.id; // Kayıtlı plandaki müdürü seçili yap
                     }
                 } else { 
-                    // Eğer global listede yoksa, bu bir sorun olabilir.
-                    // Kullanıcıyı bilgilendirebilir veya geçici olarak ekleyebiliriz.
-                    // Şimdilik, plana eklemiyoruz ve konsola uyarı yazıyoruz.
-                    console.warn(`Kaydedilmiş ek öğretmen "${savedTeacherInfo.name} (${savedTeacherInfo.branch})" genel öğretmen listesinde bulunamadı.`);
+                    console.warn(`Kaydedilmiş personel "${savedPersonInfo.name} (${savedPersonInfo.branch})" genel listede bulunamadı.`);
+                     // Geçici olarak ekle, ID'siz veya varsayılan bir ID ile
+                    planaEklenenPersonal.push({
+                        id: `temp-${Date.now()}-${Math.random()}`, // Geçici ID
+                        name: savedPersonInfo.name,
+                        branch: savedPersonInfo.branch,
+                        isMudur: savedPersonInfo.branch ? savedPersonInfo.branch.toLowerCase().includes('müdür') : false
+                    });
                 }
             });
         }
-        planaEklenenOgretmenler.sort((a, b) => { // Müdür başta olacak şekilde sırala
-            if (a.isMudur && !b.isMudur) return -1;
-            if (!a.isMudur && b.isMudur) return 1;
-            return (a.name || '').localeCompare(b.name || '');
-        });
-        renderPlanImzaAlanlari();
-        populateSidebarOgretmenList(); // Sidebar'daki öğretmen listesini de güncelle (seçili olanları göstermek için)
+        sortAndRenderImzaAlani();
+        // Sidebar listelerini güncelle (seçili olanları göstermek için)
+        populateSidebarMudurList(tumPersonalListesi.filter(p => p.isMudur));
+        populateSidebarOgretmenList(tumPersonalListesi.filter(p => !p.isMudur));
+
 
         baseAcademicPlan = Array.isArray(data.base_academic_plan_json) ? data.base_academic_plan_json.map(h => ({...h})) : [];
         yillikPlan = Array.isArray(data.plan_data_json) ? data.plan_data_json.map(h => ({...h})) : [];
@@ -1316,30 +1429,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
 document.addEventListener('DOMContentLoaded', async function() {
     populateEgitimOgretimYiliOptions();
-    await Promise.all([loadAllAracGerecTipleri(), loadAllYontemTeknikTipleri(), loadAllOgretmenler()]); // Öğretmenleri de yükle
-    // document.getElementById('addTeacherBtn').addEventListener('click', () => addTeacherRow()); // Bu satır zaten kaldırılmıştı
+    await Promise.all([loadAllAracGerecTipleri(), loadAllYontemTeknikTipleri(), loadAllPersonal()]); 
+    
     const egitimOgretimYiliSelect = document.getElementById('egitimOgretimYili');
     if (egitimOgretimYiliSelect) egitimOgretimYiliSelect.addEventListener('change', setDefaultBaslangicHaftasi);
-    
-    // "Yeni Müdür/Öğretmen Ekle" formundaki unvan inputunun ID'si 'ogretmenUnvanInput' olarak güncellendi.
-    // "Müdür mü?" checkbox'ının unvana göre otomatik işaretlenmesi (Yeni Ekle formunda)
-    const unvanInputForCheckbox = document.getElementById('ogretmenUnvanInput'); 
-    const isMudurCheckboxForNew = document.getElementById('isMudurCheckbox');
-    if (unvanInputForCheckbox && isMudurCheckboxForNew) {
-        unvanInputForCheckbox.addEventListener('input', function() {
-            const unvanText = this.value.toLowerCase();
-            isMudurCheckboxForNew.checked = unvanText.includes('müdür');
-        });
-    }
-    
+        
     document.querySelectorAll('.sidebar-menu-item').forEach(item => {
         item.addEventListener('click', function(e) { e.preventDefault(); navigateToView(this.dataset.viewTarget); });
     });
-    // Global geri butonu için event listener
     const globalBackBtn = document.getElementById('sidebarGlobalBackBtn');
     if(globalBackBtn) globalBackBtn.addEventListener('click', function(e) { e.preventDefault(); navigateToView(this.dataset.viewTarget); });
 
-    // Ders Saati Yönetimi Butonları
     document.querySelectorAll('.ders-saati-btn').forEach(button => {
         button.addEventListener('click', function() {
             selectDersSaati(this.dataset.saat);
@@ -1347,7 +1447,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
     document.getElementById('applyDersSaatiToAllBtn')?.addEventListener('click', applyDersSaatiToAll);
 
-    // Araç-Gereç Butonları
     const addCustomAracGerecBtn = document.getElementById('addCustomAracGerecBtn');
     if(addCustomAracGerecBtn) addCustomAracGerecBtn.addEventListener('click', addCustomAracGerec);
     document.getElementById('agEsitleTumHaftalarBtn')?.addEventListener('click', () => applyAracGerecAction('esitleTum'));
@@ -1355,7 +1454,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('agEkleTumHaftalaraBtn')?.addEventListener('click', () => applyAracGerecAction('ekleTum'));
     document.getElementById('agEkleSeciliHaftalaraBtn')?.addEventListener('click', () => applyAracGerecAction('ekleSecili'));
 
-    // Yöntem-Teknik Butonları
     const addCustomYontemTeknikBtn = document.getElementById('addCustomYontemTeknikBtn');
     if(addCustomYontemTeknikBtn) addCustomYontemTeknikBtn.addEventListener('click', addCustomYontemTeknik);
     document.getElementById('ytEsitleTumHaftalarBtn')?.addEventListener('click', () => applyYontemTeknikAction('esitleTum'));
@@ -1363,16 +1461,21 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('ytEkleTumHaftalaraBtn')?.addEventListener('click', () => applyYontemTeknikAction('ekleTum'));
     document.getElementById('ytEkleSeciliHaftalaraBtn')?.addEventListener('click', () => applyYontemTeknikAction('ekleSecili'));
 
-    // Müdür ve Öğretmen Yönetimi Butonları
+    // Müdür Yönetimi Butonları
+    document.getElementById('addCustomMudurBtn')?.addEventListener('click', addCustomMudur);
+    document.getElementById('addSelectedMudurToPlanBtn')?.addEventListener('click', addSelectedMudurToPlan);
+
+    // Öğretmen Yönetimi Butonları
     document.getElementById('navigateToOgretmenEkleBtn')?.addEventListener('click', () => {
-        currentEditingOgretmenId = null; // Yeni ekleme modunda olduğumuzu belirt
-        document.getElementById('ogretmenAdiSoyadiInput').value = '';
-        document.getElementById('ogretmenBransInput').value = '';
-        document.getElementById('isMudurCheckbox').checked = false;
+        document.getElementById('yeniOgretmenAdiSoyadiInput').value = '';
+        document.getElementById('yeniOgretmenBransInput').value = '';
         navigateToView('ogretmenEkleView');
     });
-    document.getElementById('saveOgretmenBtn')?.addEventListener('click', saveOgretmen);
-    document.getElementById('addSelectedOgretmenToPlanBtn')?.addEventListener('click', addSelectedOgretmenToPlan);
+    document.getElementById('saveYeniOgretmenBtn')?.addEventListener('click', saveYeniOgretmen);
+    document.getElementById('saveDuzenlenenOgretmenBtn')?.addEventListener('click', saveDuzenlenenOgretmen);
+    document.getElementById('addSelectedOgretmenlerToPlanBtn')?.addEventListener('click', addSelectedOgretmenlerToPlan);
+    
+    await loadAllPersonal(); 
 
     const defaultDersSaati = document.getElementById('dersSaati').value || '4';
     if (baseAcademicPlan.length === 0) {
@@ -1389,20 +1492,19 @@ document.addEventListener('DOMContentLoaded', async function() {
         const generateBtn = document.getElementById('generateBtn');
         const loading = document.getElementById('loading');
         
-        // Dersi veren öğretmeni `planaEklenenOgretmenler` listesinden al
-        // Genellikle "Öğretmen" unvanlı ilk kişi veya müdür olmayan ilk kişi.
-        // Ya da kullanıcıya birincil öğretmen seçtirme mekanizması eklenebilir.
-        // Şimdilik, müdür olmayan ilk kişiyi dersi veren öğretmen olarak kabul edelim.
-        // Eğer hiç öğretmen yoksa veya hepsi müdürse, kullanıcı uyarılmalı.
-        let dersiVerenOgretmen = planaEklenenOgretmenler.find(o => o.branch && !o.branch.toLowerCase().includes('müdür'));
-        if (!dersiVerenOgretmen && planaEklenenOgretmenler.length > 0) {
-            // Eğer hepsi müdürse veya branşı olmayan varsa, ilk kişiyi alalım (geçici çözüm)
-            dersiVerenOgretmen = planaEklenenOgretmenler[0];
-             showMessage("Uyarı: Dersi veren öğretmen olarak atanacak uygun bir öğretmen bulunamadı. İmza listesindeki ilk kişi kullanılacak. Lütfen öğretmenlerin unvanlarını kontrol edin.", "warning");
+        let dersiVerenOgretmen = planaEklenenPersonal.find(p => p.branch && !p.isMudur);
+        if (!dersiVerenOgretmen && planaEklenenPersonal.length > 0) {
+            const nonMudurPersonal = planaEklenenPersonal.filter(p => !p.isMudur);
+            if (nonMudurPersonal.length > 0) {
+                dersiVerenOgretmen = nonMudurPersonal[0];
+            } else {
+                dersiVerenOgretmen = planaEklenenPersonal.find(p => p.isMudur);
+                 if(dersiVerenOgretmen) showMessage("Uyarı: Dersi veren öğretmen olarak atanacak uygun bir öğretmen bulunamadı. İmza listesindeki müdür kullanılacak.", "warning");
+            }
         }
 
         if (!dersiVerenOgretmen) {
-            showMessage("Lütfen imza alanına en az bir öğretmen (veya müdür) ekleyin. Dersi veren öğretmen bu listeden seçilecektir.", "error");
+            showMessage("Lütfen imza alanına en az bir öğretmen veya müdür ekleyin. Dersi veren öğretmen bu listeden seçilecektir.", "error");
             return;
         }
         const dersiVerenOgretmenAdi = dersiVerenOgretmen.name;
@@ -1416,7 +1518,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             egitimOgretimYili: document.getElementById('egitimOgretimYili').value, 
             dersSaati: document.getElementById('dersSaati').value, 
             haftalikPlan: yillikPlan, 
-            additionalTeachers: getAdditionalTeachers().filter(t => t.name !== dersiVerenOgretmenAdi) // Dersi veren öğretmeni additionalTeachers'dan çıkar
+            additionalTeachers: getAdditionalTeachers().filter(t => t.name !== dersiVerenOgretmenAdi || (t.name === dersiVerenOgretmenAdi && !t.isPrincipal)) 
         };
         generateBtn.disabled = true; loading.style.display = 'block';
         try {
@@ -1432,3 +1534,27 @@ document.addEventListener('DOMContentLoaded', async function() {
         } finally { generateBtn.disabled = false; loading.style.display = 'none'; }
     });
 });
+
+</final_file_content>
+
+IMPORTANT: For any future changes to this file, use the final_file_content shown above as your reference. This content reflects the current state of the file, including any auto-formatting (e.g., if you used single quotes but the formatter converted them to double quotes). Always base your SEARCH/REPLACE operations on this final version to ensure accuracy.
+
+<environment_details>
+# VSCode Visible Files
+public/app.js
+
+# VSCode Open Tabs
+server.js
+public/styles.css
+public/index.html
+public/app.js
+
+# Current Time
+6/13/2025, 2:41:04 AM (Europe/Istanbul, UTC+3:00)
+
+# Context Window Usage
+418,394 / 1,048.576K tokens used (40%)
+
+# Current Mode
+ACT MODE
+</environment_details>
