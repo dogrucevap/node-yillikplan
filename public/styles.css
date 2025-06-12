@@ -731,18 +731,64 @@ body.dragging-active, body.dragging-active * {
     color: #333;
 }
 
-.sidebar .checkbox-group {
-    padding: 0 15px;
-    max-height: calc(100vh - 300px); /* Yüksekliği ayarla, butonlar ve input için yer bırak */
+.sidebar .item-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 15px;
+    max-height: calc(100vh - 250px); /* Yükseklik ayarlandı */
     overflow-y: auto;
 }
-.sidebar .checkbox-item {
-    padding: 6px 0; /* Daha sıkı padding */
-    font-size: 14px;
+
+.item-button-wrapper {
+    display: flex;
+    gap: 5px;
+    align-items: center;
 }
-.sidebar .checkbox-item label {
-    font-weight: normal;
+
+.item-button {
+    flex-grow: 1;
+    padding: 10px;
     font-size: 14px;
+    background-color: #f0f0f0;
+    color: #333;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    background-color: #f0f0f0; /* Gri arka plan */
+    color: #333; /* Koyu gri metin */
+    border: 1px solid #ccc; /* Gri kenarlık */
+}
+
+.item-button.selected {
+    background-color: #7f8c8d; /* Seçili durumda daha koyu gri */
+    color: white;
+    border-color: #6c7a7b; /* Seçili durumda kenarlık */
+}
+
+.item-delete-btn {
+    background-color: #bdc3c7; /* Gri arka plan */
+    color: white;
+    border: none;
+    border-radius: 6px; /* Kare şeklinde */
+    width: 34px;
+    height: 34px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, transform 0.1s;
+    flex-shrink: 0;
+    border-radius: 6px; /* Kenar yuvarlaklığı */
+    width: 36px; /* Genişlik ayarlandı */
+    height: 36px; /* Yükseklik ayarlandı */
+}
+
+.item-delete-btn:hover {
+    background-color: #95a5a6; /* Hover durumunda biraz daha koyu gri */
 }
 
 .sidebar .form-group {
@@ -761,6 +807,15 @@ body.dragging-active, body.dragging-active * {
     width: 100%;
     background-color: #f8f9fa; /* Arka planı sidebar ile aynı */
 }
+
+.sidebar-action-btn.add-new-item-btn { /* Yeni müdür/öğretmen ekle butonu için özel stil */
+    background-color: #2ecc71; /* Yeşil */
+    margin-top: 10px; /* Üst boşluk */
+}
+.sidebar-action-btn.add-new-item-btn:hover {
+    background-color: #27ae60;
+}
+
 
 .sidebar-action-btn {
     width: 100%;
@@ -866,6 +921,64 @@ body.dragging-active, body.dragging-active * {
     padding-left: 25px;
 }
 
+.ogretmen-item-button { /* Öğretmen listesindeki her bir satır için */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    font-size: 14px;
+    background-color: #f0f0f0;
+    color: #333;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.ogretmen-item-button.selected {
+    background-color: #3498db; /* Mavi seçili rengi */
+    color: white;
+    border-color: #2980b9;
+}
+
+.ogretmen-item-button .ogretmen-info {
+    flex-grow: 1;
+}
+.ogretmen-item-button .ogretmen-info .ogretmen-name {
+    font-weight: 500;
+}
+.ogretmen-item-button .ogretmen-info .ogretmen-branch {
+    font-size: 0.9em;
+    color: #555;
+}
+.ogretmen-item-button.selected .ogretmen-info .ogretmen-branch {
+    color: #e0e0e0;
+}
+
+
+.ogretmen-edit-btn {
+    background-color: #bdc3c7; /* Gri arka plan */
+    color: #2c3e50;
+    border: none;
+    border-radius: 4px;
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+    margin-left: 10px; /* Sol boşluk */
+}
+
+.ogretmen-edit-btn:hover {
+    background-color: #95a5a6;
+    color: white;
+}
+
+
 /* .sidebar-view-header ile ilgili stiller kaldırıldı veya genel .sidebar-header'a taşındı */
 
 .sidebar-view-content {
@@ -888,52 +1001,57 @@ body.dragging-active, body.dragging-active * {
     border-top: 1px solid #ddd;
 }
 
-.add-item-btn {
-    background-color: #2ecc71; /* Yeşil renk */
-    color: white;
-    border: none;
-    border-radius: 50%; /* Tamamen yuvarlak */
-    width: 34px; /* Input yüksekliğiyle uyumlu (padding dahil) */
-    height: 34px;
-    font-size: 16px;
-    cursor: pointer;
+.add-item-container {
     display: flex;
+    gap: 5px;
     align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s, transform 0.1s;
-    flex-shrink: 0; /* Küçülmesini engelle */
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 5px;
+    background-color: white;
+    /* Kenarlık ve padding add-item-container'dan item-input-field'a taşındı */
 }
 
-.add-item-btn:hover {
-    background-color: #27ae60;
+.item-input-field { /* Yeni sınıf */
+    flex-grow: 1;
+    border: 1px solid #ccc; /* Gri kenarlık */
+    border-radius: 6px; /* Kenar yuvarlaklığı */
+    padding: 10px; /* Padding ayarlandı */
+    font-size: 14px; /* Font boyutu ayarlandı */
+    background-color: #f9f9f9; /* Hafif gri arka plan */
 }
-.add-item-btn:active {
-    transform: scale(0.95);
+.item-input-field:focus {
+    outline: none;
+    border-color: #95a5a6; /* Odaklanınca kenarlık rengi */
+    background-color: white;
 }
 
-.delete-arac-gerec-btn {
-    background-color: #e74c3c; /* Kırmızı renk */
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 24px; /* Daha küçük boyut */
-    height: 24px;
-    font-size: 14px;
+.add-item-action-btn { /* Yeni sınıf (eski add-item-btn) */
+    background-color: #bdc3c7; /* Gri arka plan */
+    color: #2c3e50; /* Koyu gri metin */
+    border: 1px solid #95a5a6; /* Gri kenarlık */
+    border-radius: 6px; /* Kenar yuvarlaklığı */
+    padding: 0 12px; /* Padding ayarlandı */
+    height: 38px; /* Yükseklik input ile aynı hizada olması için */
+    font-size: 14px; /* Font boyutu ayarlandı */
+    font-weight: 500;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: background-color 0.2s, transform 0.1s;
     flex-shrink: 0;
-    padding: 0; /* İç boşluğu sıfırla */
+}
+.add-item-action-btn i {
+    margin-right: 5px;
 }
 
-.delete-arac-gerec-btn:hover {
-    background-color: #c0392b;
+.add-item-action-btn:hover {
+    background-color: #95a5a6; /* Hover durumunda biraz daha koyu gri */
+    color: white;
 }
-
-.delete-arac-gerec-btn:active {
-    transform: scale(0.95);
+.add-item-action-btn:active {
+    transform: scale(0.98);
 }
 
 /* Ders Saati Yönetimi Stilleri */
@@ -966,6 +1084,19 @@ body.dragging-active, body.dragging-active * {
     color: white;
     border-color: #2980b9;
     font-weight: bold;
+}
+
+#planImzaAlanlariContainer .item-button-wrapper {
+    padding: 5px; /* Daha az padding */
+}
+#planImzaAlanlariContainer .item-button {
+    font-size: 13px; /* Daha küçük font */
+    padding: 8px;
+}
+#planImzaAlanlariContainer .item-delete-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
 }
 
 

@@ -80,7 +80,16 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
         FOREIGN KEY (arac_gerec_tip_id) REFERENCES arac_gerec_tipleri (id) ON DELETE CASCADE
       )`, (err) => {
         if (err) console.error("plan_hafta_arac_gerec tablosu oluşturma hatası:", err.message);
+      });
+
+      db.run(`CREATE TABLE IF NOT EXISTS ogretmenler (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ad_soyad TEXT UNIQUE NOT NULL,
+        unvan TEXT NOT NULL
+      )`, (err) => {
+        if (err) console.error("Ogretmenler tablosu oluşturma hatası:", err.message);
         else {
+          // Demo verileri ogretmenler tablosu oluşturulduktan sonra eklenmeli
           insertDemoDataIfNeeded();
         }
       });
@@ -94,8 +103,32 @@ function insertDemoDataIfNeeded() {
     if (err) { return; }
     try {
       const demoData = JSON.parse(jsonData);
+
+      // Demo öğretmenleri ekle
+      const insertOgretmenStmt = db.prepare("INSERT OR IGNORE INTO ogretmenler (ad_soyad, unvan) VALUES (?, ?)");
+      if (demoData.ogretmen) {
+        insertOgretmenStmt.run(demoData.ogretmen, "Öğretmen");
+      }
+      // Demo verisinde okul müdürü için ayrı bir alan yok, ancak additionalTeachers içinde olabilir.
+      // Şimdilik sadece ana öğretmeni ekliyoruz. Eğer demo-data.json'da müdür bilgisi varsa, o da eklenebilir.
+      // Örneğin, demo-data.json'a bir "okulMudur" alanı eklenebilir.
+      // Veya additionalTeachers'dan "Okul Müdürü" unvanlı biri varsa o eklenebilir.
+      // Şu anki demo-data.json yapısında bu bilgi yok, bu yüzden sadece öğretmeni ekliyoruz.
+      // Eğer ileride demo-data.json'a müdür eklenirse, burası güncellenmeli.
+      // Örnek: demoData.okulMudur için: insertOgretmenStmt.run(demoData.okulMudur, "Müdür");
+      insertOgretmenStmt.finalize((err) => {
+        if (err) console.error("Demo öğretmenleri ekleme hatası (finalize):", err.message);
+      });
+
+
+      // Demo öğretmenleri ekledikten sonra planları ekle
       db.get("SELECT id FROM plans WHERE plan_name = ?", ["demo_matematik_9"], (err, row) => {
-        if (err || row) return;
+        if (err) {
+            console.error("Demo plan kontrol hatası:", err.message);
+            return;
+        }
+        if (row) return; // Plan zaten var, tekrar ekleme
+
         db.serialize(() => {
             const demoBaseAcademicPlan = demoData.haftalikPlan.map((week, index) => ({
                 originalAcademicWeek: index + 1, unite: week.unite || '', konu: week.konu || '', kazanim: week.kazanim || '',
@@ -152,11 +185,11 @@ function insertDemoDataIfNeeded() {
 
     const stmtPlan = db.prepare("INSERT INTO plans (plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, varsayilan_arac_gerec, base_academic_plan_json, plan_data_json, additional_teachers_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             stmtPlan.run("demo_matematik_9", demoData.okul, demoData.ogretmen, demoData.ders, demoData.sinif,
-              demoData.egitimOgretimYili, demoData.dersSaati, 
-              JSON.stringify(demoData.varsayilanAracGerec), 
-              JSON.stringify(demoBaseAcademicPlan), 
+              demoData.egitimOgretimYili, demoData.dersSaati,
+              JSON.stringify(demoData.varsayilanAracGerec),
+              JSON.stringify(demoBaseAcademicPlan),
               JSON.stringify(demoFullYillikPlan), // Oluşturulan tam planı kaydet
-              JSON.stringify([])); // Demo için ek öğretmen yok
+              JSON.stringify(demoData.additionalTeachers || [])); // Demo additionalTeachers varsa ekle
             stmtPlan.finalize();
         });
       });
@@ -398,6 +431,59 @@ app.delete('/api/yontem-teknik-tipleri/:name', (req, res) => {
             res.status(200).json({ message: `"${nameToDelete}" başarıyla silindi.` });
         } else {
             res.status(404).json({ error: `"${nameToDelete}" adında bir yöntem/teknik bulunamadı.` });
+        }
+    });
+});
+
+// Öğretmenler API Endpoint'leri
+app.get('/api/ogretmenler', (req, res) => {
+    db.all("SELECT id, ad_soyad, unvan FROM ogretmenler ORDER BY ad_soyad ASC", [], (err, rows) => {
+        if (err) {
+            console.error("Öğretmenler listelenirken hata:", err.message);
+            return res.status(500).json({ error: "Öğretmenler listelenirken bir sunucu hatası oluştu." });
+        }
+        res.json(rows);
+    });
+});
+
+app.post('/api/ogretmenler', (req, res) => {
+    const { ad_soyad, unvan } = req.body;
+    if (!ad_soyad || typeof ad_soyad !== 'string' || ad_soyad.trim() === '' ||
+        !unvan || typeof unvan !== 'string' || unvan.trim() === '') {
+        return res.status(400).json({ error: "Öğretmen adı soyadı ve unvanı gereklidir." });
+    }
+    const trimmedAdSoyad = ad_soyad.trim();
+    const trimmedUnvan = unvan.trim();
+
+    const stmt = db.prepare("INSERT INTO ogretmenler (ad_soyad, unvan) VALUES (?, ?)");
+    stmt.run(trimmedAdSoyad, trimmedUnvan, function(err) {
+        if (err) {
+            if (err.message.includes("UNIQUE constraint failed: ogretmenler.ad_soyad")) {
+                return res.status(409).json({ error: `"${trimmedAdSoyad}" adlı öğretmen zaten mevcut.` });
+            }
+            console.error("Yeni öğretmen ekleme hatası:", err.message);
+            return res.status(500).json({ error: "Öğretmen eklenirken bir sunucu hatası oluştu." });
+        }
+        res.status(201).json({ message: `"${trimmedAdSoyad}" başarıyla eklendi.`, id: this.lastID, ad_soyad: trimmedAdSoyad, unvan: trimmedUnvan });
+    });
+    stmt.finalize();
+});
+
+app.delete('/api/ogretmenler/:id', (req, res) => {
+    const ogretmenId = req.params.id;
+    if (!ogretmenId || isNaN(parseInt(ogretmenId))) {
+        return res.status(400).json({ error: "Geçerli bir öğretmen ID'si gereklidir." });
+    }
+    // İleride bu öğretmenin herhangi bir planda kullanılıp kullanılmadığı kontrol edilebilir.
+    db.run("DELETE FROM ogretmenler WHERE id = ?", [ogretmenId], function(err) {
+        if (err) {
+            console.error("Öğretmen silme hatası:", err.message);
+            return res.status(500).json({ error: "Öğretmen silinirken bir sunucu hatası oluştu." });
+        }
+        if (this.changes > 0) {
+            res.status(200).json({ message: "Öğretmen başarıyla silindi." });
+        } else {
+            res.status(404).json({ error: "Silinecek öğretmen bulunamadı." });
         }
     });
 });

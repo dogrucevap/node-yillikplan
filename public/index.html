@@ -32,8 +32,47 @@
                         <li><a href="#" class="sidebar-menu-item" data-view-target="aracGerecView"><i class="fas fa-tools"></i> Araç-Gereç Yönetimi</a></li>
                         <li><a href="#" class="sidebar-menu-item" data-view-target="dersSaatiView"><i class="fas fa-clock"></i> Ders Saati Yönetimi</a></li>
                         <li><a href="#" class="sidebar-menu-item" data-view-target="yontemTeknikView"><i class="fas fa-lightbulb"></i> Yöntem ve Teknik Yönetimi</a></li>
+                        <li><a href="#" class="sidebar-menu-item" data-view-target="ogretmenYonetimiView"><i class="fas fa-users"></i> Müdür ve Öğretmenler</a></li>
                         <!-- Diğer ayar seçenekleri buraya eklenebilir -->
                     </ul>
+                </div>
+
+                <!-- Müdür ve Öğretmen Yönetimi Görünümü -->
+                <div id="ogretmenYonetimiView" class="sidebar-view">
+                    <div class="sidebar-view-content">
+                        <div id="sidebarOgretmenList" class="item-list-container">
+                            <!-- Kayıtlı öğretmenler buraya JS ile eklenecek -->
+                        </div>
+                        <div style="padding: 15px;">
+                             <button type="button" id="navigateToOgretmenEkleBtn" class="sidebar-action-btn add-new-item-btn">
+                                <i class="fas fa-plus"></i> Yeni Müdür/Öğretmen Ekle
+                            </button>
+                        </div>
+                    </div>
+                    <div class="sidebar-actions">
+                        <button type="button" id="addSelectedOgretmenToPlanBtn" class="sidebar-action-btn">Seçilenleri Plana Ekle</button>
+                    </div>
+                </div>
+
+                <!-- Yeni Müdür/Öğretmen Ekleme Görünümü -->
+                <div id="ogretmenEkleView" class="sidebar-view">
+                    <div class="sidebar-view-content" style="padding: 20px;">
+                        <div class="form-group">
+                            <label for="ogretmenAdiSoyadiInput">Adı Soyadı:</label>
+                            <input type="text" id="ogretmenAdiSoyadiInput" placeholder="Müdür veya Öğretmen Adı Soyadı">
+                        </div>
+                        <div class="form-group">
+                            <label for="ogretmenUnvanInput">Unvanı (Branşı/Görevi):</label>
+                            <input type="text" id="ogretmenUnvanInput" placeholder="Örn: Okul Müdürü, Matematik Öğretmeni">
+                        </div>
+                         <div class="form-group">
+                            <label for="isMudurCheckbox">Bu kişi müdür mü?</label>
+                            <input type="checkbox" id="isMudurCheckbox" style="width: auto; height: auto;">
+                        </div>
+                    </div>
+                    <div class="sidebar-actions">
+                        <button type="button" id="saveOgretmenBtn" class="sidebar-action-btn">Kaydet</button>
+                    </div>
                 </div>
 
                 <!-- Ders Saati Yönetimi Görünümü -->
@@ -59,14 +98,14 @@
                 <!-- Yöntem ve Teknik Yönetimi Görünümü -->
                 <div id="yontemTeknikView" class="sidebar-view">
                     <div class="sidebar-view-content">
-                        <div id="sidebarYontemTeknikList" class="checkbox-group sidebar-checkbox-group">
-                            <!-- Yöntem ve teknik checkbox'ları buraya JS ile eklenecek -->
+                        <div id="sidebarYontemTeknikList" class="item-list-container">
+                            <!-- Yöntem ve teknik butonları buraya JS ile eklenecek -->
                         </div>
                         <div class="form-group" style="padding: 0 15px; margin-top: 15px;">
-                            <div style="display: flex; gap: 5px; align-items: center;">
-                                <input type="text" id="customYontemTeknikInput" placeholder="Yeni yöntem/teknik ekle..." style="font-size:13px; padding:8px; flex-grow:1;">
-                                <button type="button" id="addCustomYontemTeknikBtn" class="add-item-btn">
-                                    <i class="fas fa-plus"></i>
+                            <div class="add-item-container">
+                                <input type="text" id="customYontemTeknikInput" class="item-input-field" placeholder="Yeni yöntem/teknik...">
+                                <button type="button" id="addCustomYontemTeknikBtn" class="add-item-action-btn">
+                                    <i class="fas fa-plus"></i> Ekle
                                 </button>
                             </div>
                         </div>
@@ -85,15 +124,14 @@
                         <h3>Araç-Gereç Yönetimi</h3> // Bu başlık artık genel sidebar başlığında olacak
                     </div> -->
                     <div class="sidebar-view-content">
-                        <div id="sidebarAracGerecList" class="checkbox-group sidebar-checkbox-group">
-                            <!-- Araç-gereç checkbox'ları buraya JS ile eklenecek -->
+                        <div id="sidebarAracGerecList" class="item-list-container">
+                            <!-- Araç-gereç butonları buraya JS ile eklenecek -->
                         </div>
                         <div class="form-group" style="padding: 0 15px; margin-top: 15px;">
-                            <!-- <label for="customAracGerecInput" style="font-size: 14px;">Yeni Araç-Gereç Ekle:</label> --> <!-- Label kaldırıldı -->
-                            <div style="display: flex; gap: 5px; align-items: center;">
-                                <input type="text" id="customAracGerecInput" placeholder="Yeni araç-gereç ekle..." style="font-size:13px; padding:8px; flex-grow:1;">
-                                <button type="button" id="addCustomAracGerecBtn" class="add-item-btn">
-                                    <i class="fas fa-plus"></i>
+                            <div class="add-item-container">
+                                <input type="text" id="customAracGerecInput" class="item-input-field" placeholder="Yeni araç-gereç...">
+                                <button type="button" id="addCustomAracGerecBtn" class="add-item-action-btn">
+                                    <i class="fas fa-plus"></i> Ekle
                                 </button>
                             </div>
                         </div>
@@ -129,14 +167,10 @@
                             <div class="section">
                                 <h3 class="section-title" style="text-align: left; font-size: 18px; border: none; margin-bottom: 15px;">Genel Bilgiler</h3>
                                 <div class="form-group">
-                                    <div class="form-row-2">
+                                    <div class="form-row-2"> 
                                         <div>
                                             <label for="okul">Okul Adı *</label>
                                             <input type="text" id="okul" name="okul" required>
-                                        </div>
-                                        <div>
-                                            <label for="ogretmen">Dersi Veren Öğretmen Adı Soyadı *</label>
-                                            <input type="text" id="ogretmen" name="ogretmen" required>
                                         </div>
                                     </div>
                                 </div>
@@ -177,19 +211,11 @@
                                 <hr style="margin: 30px 0;">
                                 <h3 class="section-title" style="text-align: left; font-size: 18px; border: none; margin-bottom: 15px;">İmza Alanı Bilgileri</h3>
                                 <div class="form-group">
-                                    <label for="okulMudurAdi">Okul Müdürü Adı Soyadı *</label>
-                                    <div class="form-row-2" style="align-items: center;">
-                                        <input type="text" id="okulMudurAdi" name="okulMudurAdi" placeholder="Okul Müdürü Adı Soyadı" required>
-                                        <input type="text" id="okulMudurUnvani" name="okulMudurUnvani" value="Okul Müdürü" readonly style="background-color: #e9ecef; cursor: default; border-color: #ced4da;">
+                                    <label>İmza Alanındaki Öğretmenler/Müdürler:</label>
+                                    <div id="planImzaAlanlariContainer" class="item-list-container" style="padding:0; max-height: 150px; border: 1px solid #ddd; border-radius: 6px; background: #f9f9f9;">
+                                        <!-- Plana eklenen öğretmenler buraya JS ile gelecek -->
                                     </div>
-                                </div>
-                                <hr style="margin: 25px 0;">
-                                <div class="form-group">
-                                    <label>İmza Alanına Eklenecek Diğer Öğretmenler (Varsa):</label>
-                                    <div id="additionalTeachersContainer"></div>
-                                    <button type="button" id="addTeacherBtn" class="add-unite-btn" style="background: #27ae60; font-size: 14px; padding: 8px 15px; margin-top: 10px;">
-                                        + Öğretmen Ekle
-                                    </button>
+                                    <small style="display: block; margin-top: 5px; color: #555;">Müdür ve öğretmenleri yan menüdeki "Müdür ve Öğretmenler" bölümünden yönetebilirsiniz.</small>
                                 </div>
                                 <div style="text-align: center; margin-top: 30px;">
                                     <button type="button" class="add-unite-btn" onclick="switchTab('yillik-plan')" style="background: #3498db;">
