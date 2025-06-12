@@ -658,3 +658,253 @@ body.dragging-active, body.dragging-active * {
     color: #2070a0;
 }
 /* Bitiş: Plan Yönetim Alanı Stilleri */
+
+/* Floating Settings Button */
+.floating-settings-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #2c3e50;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    cursor: pointer;
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.floating-settings-btn:hover {
+    background-color: #34495e;
+    transform: scale(1.1);
+}
+
+.floating-settings-btn .fa-cog {
+    transition: transform 0.5s ease-in-out;
+}
+
+
+
+/* Sidebar Styles */
+.sidebar {
+    height: 100%;
+    width: 0; /* Başlangıçta kapalı */
+    position: fixed;
+    z-index: 1100;
+    top: 0;
+    right: 0;
+    background-color: #f8f9fa;
+    overflow-x: hidden;
+    transition: 0.5s;
+    padding-top: 60px; /* Close button için yer */
+    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+    border-left: 1px solid #ddd;
+}
+
+.sidebar.open {
+    width: 300px; /* Açık genişlik */
+}
+
+.sidebar h3 {
+    padding: 10px 15px;
+    font-size: 18px;
+    color: #2c3e50;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sidebar .close-btn {
+    position: absolute;
+    top: 15px;
+    right: 25px;
+    font-size: 30px;
+    margin-left: 50px;
+    color: #888;
+    text-decoration: none;
+}
+.sidebar .close-btn:hover {
+    color: #333;
+}
+
+.sidebar .checkbox-group {
+    padding: 0 15px;
+    max-height: calc(100vh - 300px); /* Yüksekliği ayarla, butonlar ve input için yer bırak */
+    overflow-y: auto;
+}
+.sidebar .checkbox-item {
+    padding: 6px 0; /* Daha sıkı padding */
+    font-size: 14px;
+}
+.sidebar .checkbox-item label {
+    font-weight: normal;
+    font-size: 14px;
+}
+
+.sidebar .form-group {
+    padding: 0 15px;
+    margin-bottom: 15px;
+}
+
+.sidebar-actions {
+    padding: 15px;
+    border-top: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background-color: #f8f9fa; /* Arka planı sidebar ile aynı */
+}
+
+.sidebar-action-btn {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.sidebar-action-btn:hover {
+    background-color: #2980b9;
+}
+
+.sidebar-action-btn:disabled {
+    background-color: #bdc3c7;
+    cursor: not-allowed;
+}
+
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid #e0e0e0;
+    background-color: #e9ecef; /* Hafif bir başlık arka planı */
+}
+
+#sidebarTitle {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2c3e50;
+    flex-grow: 1; /* Başlığın ortalanmasını sağlar */
+    text-align: center; /* Başlığı ortala */
+    margin-right: 28px; /* Kapatma butonuyla aynı hizada olması için (yaklaşık) */
+}
+
+.sidebar-header .sidebar-back-btn { /* Global geri butonu için stil */
+    color: #34495e;
+    font-size: 18px; /* Biraz daha büyük */
+    text-decoration: none;
+    padding: 5px; /* Tıklama alanını genişlet */
+}
+.sidebar-header .sidebar-back-btn:hover {
+    color: #2c3e50;
+}
+
+
+.sidebar-content-wrapper {
+    position: relative;
+    width: 100%;
+    height: calc(100% - 50px); /* Header yüksekliği çıkarıldı */
+}
+
+.sidebar-view {
+    width: 100%;
+    height: 100%;
+    background-color: #f8f9fa;
+    display: none; /* Başlangıçta gizli */
+    flex-direction: column;
+}
+
+.sidebar-view.active-view {
+    display: flex; /* Sadece aktif olan görünür */
+}
+
+
+.sidebar-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-menu li a {
+    display: block;
+    padding: 15px 20px;
+    text-decoration: none;
+    color: #34495e;
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.2s, padding-left 0.2s;
+    font-size: 15px;
+}
+.sidebar-menu li a i {
+    margin-right: 10px;
+    width: 20px; /* İkonlar için sabit genişlik */
+    text-align: center;
+}
+
+.sidebar-menu li a:hover {
+    background-color: #e9ecef;
+    padding-left: 25px;
+}
+
+/* .sidebar-view-header ile ilgili stiller kaldırıldı veya genel .sidebar-header'a taşındı */
+
+.sidebar-view-content {
+    flex-grow: 1;
+    overflow-y: auto; /* İçerik taşarsa kaydırma */
+    padding-bottom: 150px; /* Alttaki aksiyon butonları için yer */
+}
+
+.sidebar-view .sidebar-checkbox-group {
+    padding: 15px; /* İç padding */
+    max-height: none; /* .sidebar .checkbox-group'tan farklı */
+}
+
+.sidebar-view .sidebar-actions {
+    position: absolute; /* Görünümün altına sabitlenir */
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #f0f4f8; /* Biraz farklı bir arka plan */
+    border-top: 1px solid #ddd;
+}
+
+.add-item-btn {
+    background-color: #2ecc71; /* Yeşil renk */
+    color: white;
+    border: none;
+    border-radius: 50%; /* Tamamen yuvarlak */
+    width: 34px; /* Input yüksekliğiyle uyumlu (padding dahil) */
+    height: 34px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, transform 0.1s;
+    flex-shrink: 0; /* Küçülmesini engelle */
+}
+
+.add-item-btn:hover {
+    background-color: #27ae60;
+}
+.add-item-btn:active {
+    transform: scale(0.95);
+}
+
+
+/* Bitiş: Sidebar Stilleri */

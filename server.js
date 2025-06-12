@@ -10,11 +10,7 @@ const PORT = 3000;
 const DB_PATH = path.join(__dirname, 'yillik_planlar.sqlite');
 
 const TUM_ARAC_GEREC_LISTESI = [
-    "Tahta", "Projeksiyon", "Hesap Makinesi", "Bilgisayar", "Akıllı Tahta",
-    "Grafik Tablet", "Cetvel Seti", "Pergel", "Gönye", "Çalışma Yaprağı",
-    "Model", "Poster", "Video", "Animasyon", "Oyun", "Deney Seti",
-    "Venn Şemaları", "Grafik Kağıdı", "Sayı Doğrusu", "Kesir Modelleri", "Cetvel",
-    "Nesneler", "Zar", "Para", "Kart Destesi", "Grafik Programı", "Cebirsel İfadeler"
+    "Tahta", "Projeksiyon", "Hesap Makinesi", "Bilgisayar", "Akıllı Tahta"
 ];
 
 const db = new sqlite3.Database(DB_PATH, (err) => {
@@ -109,28 +105,42 @@ function insertDemoDataIfNeeded() {
             while(demoAcademicPlanIndex < demoBaseAcademicPlan.length) {
                 for (const holidayKey in TATIL_DONEMLERI_SERVER) {
                     if (TATIL_DONEMLERI_SERVER[holidayKey].afterAcademicWeek === demoAcademicPlanIndex) {
-                         const holiday = TATIL_DONEMLERI_SERVER[holidayKey];
-                         for (let j = 0; j < holiday.duration; j++) {
-                            demoFullYillikPlan.push({ type: 'holiday', label: holiday.label, tarih: '' }); // Tarih boş olabilir, istemci hesaplar
-                         }
-                         break; 
-                    }
-                }
-                const academicWeekData = demoBaseAcademicPlan[demoAcademicPlanIndex];
-                demoFullYillikPlan.push({ ...academicWeekData, type: 'academic', tarih: '' }); // Tarih boş olabilir
-                demoAcademicPlanIndex++;
+                 const holiday = TATIL_DONEMLERI_SERVER[holidayKey];
+                 // Demo veri için tarih aralığı hesaplamıyoruz, sadece label ve duration yeterli olabilir
+                 // Ya da istemcideki formatDateRange benzeri bir fonksiyon sunucuda da olmalı.
+                 // Şimdilik, istemcinin yüklerken bu tarihleri doğru hesaplayacağını varsayarak
+                 // tarih alanını boş bırakabilir veya sadece label ve duration ile kaydedebiliriz.
+                 // Word çıktısı için tarih önemli olduğundan, demo verisi için de bu bilgiyi oluşturmak iyi olur.
+                 // Ancak, demo verisi için başlangıç haftası belli olmadığından, tam tarih aralığı burada hesaplanamaz.
+                 // Bu nedenle, demo planı yüklendiğinde istemci tarafı bu tarihleri dolduracaktır.
+                 // Word'e yazarken de `haftaData.tarih` kullanılır.
+                 demoFullYillikPlan.push({ 
+                    type: 'holiday', 
+                    label: holiday.label, 
+                    duration: holiday.duration, 
+                    tarih: `(${holiday.duration} Hafta)` // Geçici bir gösterim, istemci bunu güncelleyecek
+                });
+                 break; 
             }
-            for (const holidayKey in TATIL_DONEMLERI_SERVER) {
-                if (TATIL_DONEMLERI_SERVER[holidayKey].afterAcademicWeek === demoBaseAcademicPlan.length) {
-                     const holiday = TATIL_DONEMLERI_SERVER[holidayKey];
-                     for (let j = 0; j < holiday.duration; j++) {
-                        demoFullYillikPlan.push({ type: 'holiday', label: holiday.label, tarih: '' });
-                     }
-                     break;
-                }
-            }
+        }
+        const academicWeekData = demoBaseAcademicPlan[demoAcademicPlanIndex];
+        demoFullYillikPlan.push({ ...academicWeekData, type: 'academic', tarih: '' }); // Tarih istemci tarafından hesaplanacak
+        demoAcademicPlanIndex++;
+    }
+    for (const holidayKey in TATIL_DONEMLERI_SERVER) {
+        if (TATIL_DONEMLERI_SERVER[holidayKey].afterAcademicWeek === demoBaseAcademicPlan.length) {
+             const holiday = TATIL_DONEMLERI_SERVER[holidayKey];
+             demoFullYillikPlan.push({ 
+                type: 'holiday', 
+                label: holiday.label, 
+                duration: holiday.duration,
+                tarih: `(${holiday.duration} Hafta)` 
+            });
+             break;
+        }
+    }
 
-            const stmtPlan = db.prepare("INSERT INTO plans (plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, varsayilan_arac_gerec, base_academic_plan_json, plan_data_json, additional_teachers_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    const stmtPlan = db.prepare("INSERT INTO plans (plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, varsayilan_arac_gerec, base_academic_plan_json, plan_data_json, additional_teachers_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             stmtPlan.run("demo_matematik_9", demoData.okul, demoData.ogretmen, demoData.ders, demoData.sinif,
               demoData.egitimOgretimYili, demoData.dersSaati, 
               JSON.stringify(demoData.varsayilanAracGerec), 
@@ -268,6 +278,74 @@ app.delete('/api/plans/:id', (req, res) => {
         res.status(200).json({ message: "Plan başarıyla silindi." });
     });
 });
+
+// Yeni Araç-Gereç Tipi Ekleme Endpoint'i
+app.post('/api/arac-gerec-tipleri', (req, res) => {
+    const { name } = req.body;
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+        return res.status(400).json({ error: "Araç-gereç adı gereklidir ve geçerli bir metin olmalıdır." });
+    }
+    const trimmedName = name.trim();
+    const stmt = db.prepare("INSERT OR IGNORE INTO arac_gerec_tipleri (name) VALUES (?)");
+    stmt.run(trimmedName, function(err) {
+        if (err) {
+            console.error("Yeni araç-gereç tipi ekleme hatası:", err.message);
+            return res.status(500).json({ error: "Araç-gereç tipi eklenirken bir sunucu hatası oluştu." });
+        }
+        if (this.changes > 0) {
+            // Yeni eklendi, ID'yi alıp tüm listeyi geri döndürebiliriz veya sadece başarı mesajı
+            db.get("SELECT id, name FROM arac_gerec_tipleri WHERE name = ?", [trimmedName], (err, row) => {
+                if (err || !row) return res.status(201).json({ message: `"${trimmedName}" başarıyla eklendi.`, name: trimmedName });
+                res.status(201).json({ message: `"${trimmedName}" başarıyla eklendi.`, id: row.id, name: row.name });
+            });
+        } else {
+            // Zaten vardı, değişiklik olmadı
+             db.get("SELECT id, name FROM arac_gerec_tipleri WHERE name = ?", [trimmedName], (err, row) => {
+                if (err || !row) return res.status(200).json({ message: `"${trimmedName}" zaten mevcut.`, name: trimmedName });
+                res.status(200).json({ message: `"${trimmedName}" zaten mevcut.`, id: row.id, name: row.name });
+            });
+        }
+    });
+    stmt.finalize();
+});
+
+// Tüm Araç-Gereç Tiplerini Listeleme Endpoint'i
+app.get('/api/arac-gerec-tipleri', (req, res) => {
+    db.all("SELECT name FROM arac_gerec_tipleri ORDER BY name ASC", [], (err, rows) => {
+        if (err) {
+            console.error("Araç-gereç tipleri listeleme hatası:", err.message);
+            return res.status(500).json({ error: "Araç-gereç tipleri listelenirken bir sunucu hatası oluştu." });
+        }
+        res.json(rows.map(row => row.name)); // Sadece isimleri içeren bir dizi döndür
+    });
+});
+
+// Araç-Gereç Tipini Silme Endpoint'i
+app.delete('/api/arac-gerec-tipleri/:name', (req, res) => {
+    const nameToDelete = req.params.name;
+    if (!nameToDelete) {
+        return res.status(400).json({ error: "Silinecek araç-gereç adı gereklidir." });
+    }
+
+    // Önce bu araç-gerecin herhangi bir plan tarafından kullanılıp kullanılmadığını kontrol edebiliriz.
+    // Şimdilik, doğrudan sileceğiz. Eğer ilişkili kayıtlar varsa, SQLite ON DELETE CASCADE bunu halledebilir
+    // ya da manuel olarak plan_hafta_arac_gerec tablosundan da silmek gerekebilir.
+    // Basitlik adına, şimdilik sadece arac_gerec_tipleri tablosundan siliyoruz.
+    // Daha gelişmiş bir senaryoda, bu araç-gerecin kullanıldığı planlar varsa kullanıcı uyarılmalı veya silme engellenmeli.
+
+    db.run("DELETE FROM arac_gerec_tipleri WHERE name = ?", [nameToDelete], function(err) {
+        if (err) {
+            console.error("Araç-gereç tipi silme hatası:", err.message);
+            return res.status(500).json({ error: "Araç-gereç tipi silinirken bir sunucu hatası oluştu." });
+        }
+        if (this.changes > 0) {
+            res.status(200).json({ message: `"${nameToDelete}" başarıyla silindi.` });
+        } else {
+            res.status(404).json({ error: `"${nameToDelete}" adında bir araç-gereç bulunamadı.` });
+        }
+    });
+});
+
 
 app.post('/generate-plan', async (req, res) => {
   try {

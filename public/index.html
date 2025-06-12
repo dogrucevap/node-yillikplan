@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEB Ünitelendirilmiş Yıllık Plan Oluşturucu</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -14,26 +15,67 @@
             <p>36 Haftalık Detaylı Ders Planı Oluşturun</p>
         </div>
 
+        <button id="settingsBtn" class="floating-settings-btn">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <div id="settingsSidebar" class="sidebar">
+            <div class="sidebar-header">
+                <a href="#" class="sidebar-back-btn" id="sidebarGlobalBackBtn" data-view-target="mainMenuView" style="display: none;"><i class="fas fa-arrow-left"></i></a>
+                <span id="sidebarTitle">Ayarlar</span>
+                <a href="javascript:void(0)" class="close-btn" id="closeSettingsSidebarBtn">&times;</a>
+            </div>
+            <div class="sidebar-content-wrapper">
+                <!-- Ana Menü Görünümü -->
+                <div id="mainMenuView" class="sidebar-view active-view">
+                    <ul class="sidebar-menu">
+                        <li><a href="#" class="sidebar-menu-item" data-view-target="aracGerecView"><i class="fas fa-tools"></i> Araç-Gereç Yönetimi</a></li>
+                        <!-- Diğer ayar seçenekleri buraya eklenebilir -->
+                    </ul>
+                </div>
+
+                <!-- Araç-Gereç Yönetimi Görünümü -->
+                <div id="aracGerecView" class="sidebar-view">
+                    <!-- <div class="sidebar-view-header">
+                        <h3>Araç-Gereç Yönetimi</h3> // Bu başlık artık genel sidebar başlığında olacak
+                    </div> -->
+                    <div class="sidebar-view-content">
+                        <div id="sidebarAracGerecList" class="checkbox-group sidebar-checkbox-group">
+                            <!-- Araç-gereç checkbox'ları buraya JS ile eklenecek -->
+                        </div>
+                        <div class="form-group" style="padding: 0 15px; margin-top: 15px;">
+                            <!-- <label for="customAracGerecInput" style="font-size: 14px;">Yeni Araç-Gereç Ekle:</label> --> <!-- Label kaldırıldı -->
+                            <div style="display: flex; gap: 5px; align-items: center;">
+                                <input type="text" id="customAracGerecInput" placeholder="Yeni araç-gereç ekle..." style="font-size:13px; padding:8px; flex-grow:1;">
+                                <button type="button" id="addCustomAracGerecBtn" class="add-item-btn">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="sidebar-actions" style="padding: 15px; border-top: 1px solid #eee; margin-top:15px;">
+                            <button type="button" id="esitleTumHaftalarBtn" class="sidebar-action-btn">Tüm Haftaları Eşitle</button>
+                            <button type="button" id="esitleSeciliHaftalarBtn" class="sidebar-action-btn" disabled>Seçili Haftaları Eşitle</button>
+                            <button type="button" id="ekleTumHaftalaraBtn" class="sidebar-action-btn">Tüm Haftalara Ekle</button>
+                            <button type="button" id="ekleSeciliHaftalaraBtn" class="sidebar-action-btn" disabled>Seçili Haftalara Ekle</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Diğer görünümler buraya eklenebilir -->
+            </div>
+        </div>
+
+
         <div class="form-container">
             <div id="message" class="message"></div>
-
-            <!-- Demo Veri Yükle Butonu Kaldırıldı -->
-            <div class="action-buttons-container" style="justify-content: flex-end;"> 
-                <!-- Sadece sağda bir buton kalacaksa (ileride eklenebilir) veya boş kalacaksa diye flex-end -->
-            </div>
 
             <div class="tabs-container">
                 <div class="tabs-nav">
                     <button class="tab-button active" onclick="switchTab('temel-bilgiler')">
                         📋 Başlık ve Dipnotlar
                     </button>
-                    <button class="tab-button" onclick="switchTab('arac-gerec')">
-                        🛠️ Araç Gereçler
+                    <button class="tab-button" onclick="switchTab('yillik-plan')"> 
+                        📅 Yıllık Plan
                     </button>
-                    <button class="tab-button" onclick="switchTab('yillik-plan'); loadSavedPlans();"> <!-- Yıllık Plan'a tıklandığında kayıtlı planları yükle -->
-                        📅 Yıllık Plan ve Yönetimi
-                    </button>
-                    <!-- Kaydedilen Planlar Sekmesi Kaldırıldı -->
                 </div>
 
                 <div class="tab-content">
@@ -91,7 +133,7 @@
                                 <h3 class="section-title" style="text-align: left; font-size: 18px; border: none; margin-bottom: 15px;">İmza Alanı Bilgileri</h3>
                                 <div class="form-group">
                                     <label for="okulMudurAdi">Okul Müdürü Adı Soyadı *</label>
-                                    <div class="form-row-2" style="align-items: center;"> <!-- form-row-2 yapısını koruyalım, ikinci eleman readonly olacak -->
+                                    <div class="form-row-2" style="align-items: center;">
                                         <input type="text" id="okulMudurAdi" name="okulMudurAdi" placeholder="Okul Müdürü Adı Soyadı" required>
                                         <input type="text" id="okulMudurUnvani" name="okulMudurUnvani" value="Okul Müdürü" readonly style="background-color: #e9ecef; cursor: default; border-color: #ced4da;">
                                     </div>
@@ -105,21 +147,10 @@
                                     </button>
                                 </div>
                                 <div style="text-align: center; margin-top: 30px;">
-                                    <button type="button" class="add-unite-btn" onclick="switchTab('arac-gerec')" style="background: #3498db;">
-                                        ➡️ Araç Gereçlere Geç
+                                    <button type="button" class="add-unite-btn" onclick="switchTab('yillik-plan')" style="background: #3498db;">
+                                        ➡️ Yıllık Plana Geç
                                     </button>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div id="arac-gerec" class="tab-panel">
-                             <div class="section">
-                                <h3 class="section-title" style="text-align: left; font-size: 18px; border: none; margin-bottom: 15px;">Varsayılan Araç-Gereçler</h3>
-                                <p style="margin-bottom:15px; font-size:14px; color: #555;">Burada seçtiğiniz araç-gereçler, yıllık plandaki her hafta için otomatik olarak seçili gelecektir. Haftalık bazda değişiklik yapabilirsiniz.</p>
-                                <div id="aracGerecGroup" class="checkbox-group">
-                                    <!-- Araç-gereç checkbox'ları buraya eklenecek -->
-                                </div>
-                                <!-- Araç Gereçlerden Yıllık Plana Geç Butonu Kaldırıldı -->
                             </div>
                         </div>
 
@@ -139,28 +170,24 @@
                             <div id="haftaContainer" class="hafta-container-grid">
                                 <!-- Haftalık plan satırları buraya eklenecek -->
                             </div>
-                            
-                            <!-- Plan Yönetim Alanı ve Ana İndir Butonu Yıllık Plan Sekmesinden Çıkarıldı -->
                         </div>
-                        <!-- Eski Kaydedilen Planlar Sekmesi İçeriği Buradan Kaldırıldı -->
                         <div class="loading" id="loading">
                             <div class="spinner"></div>
                             <p>Word belgesi oluşturuluyor...</p>
                         </div>
                     </form>
-                </div> <!-- .tab-content sonu -->
-            </div> <!-- .tabs-container sonu -->
+                </div> 
+            </div> 
 
-            <!-- Plan Yönetim Alanı ve Ana İndir Butonu Buraya Taşındı (Tüm Tabların Altına) -->
             <hr style="margin: 40px 0;">
-            <div id="planYonetimAlani" class="section" style="border-left-color: #2ecc71; margin-top: 0;"> <!-- margin-top:0 eklendi çünkü hr zaten var -->
+            <div id="planYonetimAlani" class="section" style="border-left-color: #2ecc71; margin-top: 0;">
                 <h3 class="section-title" style="text-align: left; font-size: 18px; border: none; margin-bottom: 15px;">Plan Yönetimi ve Kayıtlı Planlar</h3>
                 <div class="form-group">
                     <label for="currentPlanNameInput">Mevcut Plan Adı (Kaydetmek veya Güncellemek İçin):</label>
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <input type="text" id="currentPlanNameInput" placeholder="Plan adı (boş bırakılırsa otomatik adlandırılır)" style="flex-grow: 1;">
                         <button type="button" class="demo-btn" onclick="saveCurrentPlan()" style="background: #2ecc71; padding: 12px 20px; white-space: nowrap;">
-                            💾 Kaydet
+                            💾 Mevcut Planı Kaydet/Güncelle
                         </button>
                     </div>
                     <small style="display: block; margin-top: 5px; color: #555;">Var olan bir plan adını girerseniz, o plan güncellenir. Yeni bir ad girerseniz veya boş bırakırsanız yeni plan olarak kaydedilir.</small>
@@ -173,14 +200,14 @@
 
             <hr style="margin: 40px 0;">
 
-            <div style="text-align: center; margin-top: 0; margin-bottom: 20px;"> <!-- margin-top:0 eklendi, margin-bottom eklendi -->
+            <div style="text-align: center; margin-top: 0; margin-bottom: 20px;">
                 <button type="submit" form="planForm" class="generate-btn" id="generateBtn">
                     📄 Kaydetmeden Mevcut Planı İndir (Word)
                 </button>
             </div>
 
-        </div> <!-- .form-container sonu -->
-    </div> <!-- .container sonu -->
+        </div> 
+    </div> 
     <script src="app.js"></script>
 </body>
 </html>
