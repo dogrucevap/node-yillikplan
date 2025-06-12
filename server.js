@@ -301,10 +301,10 @@ app.post('/generate-plan', async (req, res) => {
       let cells;
       if (isHoliday) {
         cells = [
-          new TableCell({ children: [new Paragraph({ text: weekDisplayValue, style: "holidayCell" })], shading: { fill: "E0E0E0", type: ShadingType.CLEAR, color: "auto" } }),
-          new TableCell({ children: [new Paragraph({ text: haftaData.tarih || "", style: "holidayCell" })], shading: { fill: "E0E0E0", type: ShadingType.CLEAR, color: "auto" } }),
-          new TableCell({ children: [new Paragraph({text: "", style: "holidayCell"})], shading: { fill: "E0E0E0", type: ShadingType.CLEAR, color: "auto" } }),
-          new TableCell({ children: [new Paragraph({ text: haftaData.label || "Tatil", style: "holidayCell" })], columnSpan: 5, shading: { fill: "E0E0E0", type: ShadingType.CLEAR, color: "auto" } })
+          new TableCell({ children: [new Paragraph({ text: weekDisplayValue, style: "holidayCell" })], shading: { fill: "E0E0E0", type: ShadingType.SOLID } }),
+          new TableCell({ children: [new Paragraph({ text: haftaData.tarih || "", style: "holidayCell" })], shading: { fill: "E0E0E0", type: ShadingType.SOLID } }),
+          new TableCell({ children: [new Paragraph({text: "", style: "holidayCell"})], shading: { fill: "E0E0E0", type: ShadingType.SOLID } }),
+          new TableCell({ children: [new Paragraph({ text: haftaData.label || "Tatil", style: "holidayCell" })], columnSpan: 5, shading: { fill: "E0E0E0", type: ShadingType.SOLID } })
         ];
       } else {
         cells = [
