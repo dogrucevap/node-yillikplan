@@ -790,6 +790,22 @@ function toggleYontemTeknik(academicWeekNum, item, selectedContainer) {
     const basePlanEntry = baseAcademicPlan.find(h => h.originalAcademicWeek === academicWeekNum);
     if(basePlanEntry) basePlanEntry.yontemTeknik = [...planEntry.yontemTeknik];
     updateYontemTeknikDisplay(selectedContainer, planEntry.yontemTeknik, academicWeekNum);
+    updateSidebarYontemTeknikSelectionFromPlan(planEntry.yontemTeknik); // Kenar çubuğunu güncelle
+}
+
+// Helper function to update sidebar yontem/teknik selection based on current week's items
+function updateSidebarYontemTeknikSelectionFromPlan(currentWeekYontemTeknik = []) {
+    const sidebarListContainer = document.getElementById('sidebarYontemTeknikList');
+    if (sidebarListContainer) {
+        const sidebarButtons = sidebarListContainer.querySelectorAll('.item-button');
+        sidebarButtons.forEach(btn => {
+            if (currentWeekYontemTeknik.includes(btn.dataset.value)) {
+                btn.classList.add('selected');
+            } else {
+                btn.classList.remove('selected');
+            }
+        });
+    }
 }
 
 function updateYontemTeknikDisplay(container, items, academicWeekNum) {
@@ -815,13 +831,20 @@ function removeYontemTeknik(academicWeekNum, item) {
             if (baseIndex > -1) basePlanEntry.yontemTeknik.splice(baseIndex, 1);
         }
         renderYillikPlan();
+        updateSidebarYontemTeknikSelectionFromPlan(planEntry.yontemTeknik); // Kenar çubuğunu güncelle
     }
 }
 
 function createYontemTeknikSelector(academicWeekNum, selectedItems = []) { 
     const container = document.createElement('div'); container.className = 'arac-gerec-container';
     const selected = document.createElement('div'); selected.className = 'arac-gerec-selected';
-    selected.onclick = () => toggleDropdown(selected.nextElementSibling);
+    selected.onclick = () => {
+        toggleDropdown(selected.nextElementSibling);
+        // Dropdown açıldığında, bu haftanın seçili yöntem/tekniklerini al ve kenar çubuğunu güncelle
+        const planEntry = yillikPlan.find(h => h.type === 'academic' && h.originalAcademicWeek === academicWeekNum);
+        const currentWeekYontemTeknik = planEntry ? (planEntry.yontemTeknik || []) : [];
+        updateSidebarYontemTeknikSelectionFromPlan(currentWeekYontemTeknik);
+    };
     const dropdown = document.createElement('div'); dropdown.className = 'arac-gerec-dropdown';
     tumYontemTeknikListesi.forEach(item => {
         const option = document.createElement('div'); option.className = 'arac-gerec-option';
@@ -1201,6 +1224,33 @@ async function loadSpecificPlan(planId) {
         document.querySelectorAll('#sidebarAracGerecList .item-button').forEach(btn => { // Checkbox değil buton
             if (savedAracGerec.includes(btn.dataset.value)) btn.classList.add('selected');
             else btn.classList.remove('selected');
+        });
+
+        // Yöntem ve Teknikleri yükle ve sidebar'da seçili yap
+        let allYontemTeknikInPlan = [];
+        const sourceForYontemTeknik = Array.isArray(data.base_academic_plan_json) 
+            ? data.base_academic_plan_json 
+            : (Array.isArray(data.plan_data_json) ? data.plan_data_json.filter(h => h.type === 'academic') : []);
+        
+        sourceForYontemTeknik.forEach(hafta => {
+            if (Array.isArray(hafta.yontemTeknik)) {
+                hafta.yontemTeknik.forEach(yt => {
+                    if (yt && !allYontemTeknikInPlan.includes(yt)) {
+                        allYontemTeknikInPlan.push(yt);
+                    }
+                    if (yt && !tumYontemTeknikListesi.includes(yt)) {
+                        tumYontemTeknikListesi.push(yt);
+                    }
+                });
+            }
+        });
+        populateSidebarYontemTeknik(); 
+        document.querySelectorAll('#sidebarYontemTeknikList .item-button').forEach(btn => {
+            if (allYontemTeknikInPlan.includes(btn.dataset.value)) {
+                btn.classList.add('selected');
+            } else {
+                btn.classList.remove('selected');
+            }
         });
         
         // Kayıtlı öğretmenleri yükle ve plana eklenenleri ayarla

@@ -569,15 +569,6 @@ app.post('/generate-plan', async (req, res) => {
             // bu kontrol daha karmaşıklaşabilir. Şimdilik basit tutuyoruz.
             // Ya da daha iyisi, additionalTeachers'dan dersi veren öğretmeni filtrele.
             // Ancak şu anki yapıda additionalTeachers dersi veren öğretmeni içermiyor olmalı.
-            // Okul Müdürü için özel bir durum:
-            if (teacher.isPrincipal && teacher.name === ogretmen) { // Eğer dersi veren öğretmen aynı zamanda okul müdürü olarak da girildiyse
-                 // ve branch "Okul Müdürü" ise (ki öyle olmalı)
-                 // zaten yukarıda dersi veren öğretmen olarak eklendi, burada tekrar eklemeye gerek yok
-                 // AMA eğer okul müdürü farklı bir isimle girildiyse eklenmeli.
-                 // Bu senaryo biraz karışık, şimdilik `getAdditionalTeachers` okul müdürünü ayrı ekliyor.
-            }
-
-
             signatureCells.push(new TableCell({
                 children: [
                     new Paragraph({ children: [new TextRun({ text: teacher.name, bold: true, size: 22 })], alignment: AlignmentType.CENTER }),
@@ -664,10 +655,6 @@ app.post('/generate-plan', async (req, res) => {
                     width: { size: 100, type: WidthType.PERCENTAGE },
                     borders: { top: { style: "none" }, bottom: { style: "none" }, left: { style: "none" }, right: { style: "none" }, insideHorizontal: { style: "none" }, insideVertical: { style: "none" } },
                 }),
-                // Sabit "Uygundur Okul Müdürü" kısmı kaldırıldı. Bu bilgi artık additionalTeachers ile dinamik olarak yönetilecek.
-                // Eğer additionalTeachers içinde Okul Müdürü varsa, o zaten signatureRows içinde eklenecektir.
-                // Ekstra bir "Uygundur" metni isteniyorsa, bu ayrıca eklenebilir, ancak belirli bir isme bağlı olmamalı.
-                // Şimdilik tamamen kaldırıyorum, çünkü imza alanları zaten dinamik.
             ],
         }],
     });
