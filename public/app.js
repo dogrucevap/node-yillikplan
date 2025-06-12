@@ -34,14 +34,30 @@ function closeSidebar() {
 function navigateToView(targetViewId) {
     const views = document.querySelectorAll('.sidebar-view');
     const targetView = document.getElementById(targetViewId);
+    const currentActiveView = document.getElementById(currentSidebarView);
 
-    if (!targetView) return;
+    if (!targetView || targetViewId === currentSidebarView) return;
 
-    // Tüm görünümleri gizle
-    views.forEach(view => view.classList.remove('active-view'));
+    // Geriye gidiliyorsa animasyon yönünü tersine çevir (isteğe bağlı)
+    const isNavigatingBack = targetViewId === 'mainMenuView';
 
-    // Sadece hedef görünümü göster
+    views.forEach(view => {
+        view.classList.remove('prev-view', 'active-view');
+    });
+
+    if (currentActiveView) {
+        currentActiveView.classList.add('prev-view');
+    }
+    
     targetView.classList.add('active-view');
+    
+    // Ana menüye dönerken prev-view'i hemen kaldır
+    if (isNavigatingBack && currentActiveView) {
+         setTimeout(() => {
+            currentActiveView.classList.remove('prev-view');
+         }, 300); // transition süresiyle eşleşmeli
+    }
+    
     currentSidebarView = targetViewId;
 
     // Başlığı ve geri butonunu güncelle
@@ -51,6 +67,12 @@ function navigateToView(targetViewId) {
             sidebarGlobalBackBtn.style.display = 'none';
         } else if (targetViewId === 'aracGerecView') {
             sidebarTitle.textContent = 'Araç-Gereç Yönetimi';
+            sidebarGlobalBackBtn.style.display = 'inline-block';
+        } else if (targetViewId === 'dersSaatiView') {
+            sidebarTitle.textContent = 'Ders Saati Yönetimi';
+            sidebarGlobalBackBtn.style.display = 'inline-block';
+        } else if (targetViewId === 'yontemTeknikView') {
+            sidebarTitle.textContent = 'Yöntem ve Teknik Yönetimi';
             sidebarGlobalBackBtn.style.display = 'inline-block';
         }
     }
@@ -119,12 +141,42 @@ function populateEgitimOgretimYiliOptions() {
     }
 }
 
+// --- DERS SAATİ YÖNETİMİ ---
+let seciliDersSaati = null;
+
+function selectDersSaati(saat) {
+    seciliDersSaati = saat;
+    const buttons = document.querySelectorAll('.ders-saati-btn');
+    buttons.forEach(btn => {
+        if (btn.dataset.saat === saat) {
+            btn.classList.add('selected');
+        } else {
+            btn.classList.remove('selected');
+        }
+    });
+}
+
+function applyDersSaatiToAll() {
+    if (seciliDersSaati === null) {
+        showMessage("Lütfen önce bir ders saati seçin.", "error");
+        return;
+    }
+    const newDersSaati = seciliDersSaati;
+    document.getElementById('dersSaati').value = newDersSaati; // Ana formdaki inputu da güncelle
+    baseAcademicPlan.forEach(hafta => {
+        hafta.dersSaati = newDersSaati;
+    });
+    updateAllWeekDates(); // Bu fonksiyon renderYillikPlan'ı çağırarak tabloyu günceller
+    showMessage(`${newDersSaati} ders saati tüm haftalara uygulandı.`, "success");
+}
+
+
 // Global Değişkenler
 let yillikPlan = [];
 let baseAcademicPlan = [];
 let currentEditingPlanId = null;
-let tumAracGerecListesi = []; 
-const yontemTeknikler = ["Anlatım", "Soru-Cevap", "Problem Çözme", "Gösterip Yaptırma", "Grup Çalışması", "Proje", "Beyin Fırtınası", "Tartışma", "Örnek Olay", "Oyun", "Drama", "Deney"];
+let tumAracGerecListesi = [];
+let tumYontemTeknikListesi = [];
 const TATIL_DONEMLERI = { ARA_TATIL_1: { duration: 1, afterAcademicWeek: 9, label: "1. Ara Tatil" }, YARIYIL_TATILI: { duration: 2, afterAcademicWeek: 18, label: "Yarıyıl Tatili" }, ARA_TATIL_2: { duration: 1, afterAcademicWeek: 27, label: "2. Ara Tatil" }};
 const TOPLAM_AKADEMIK_HAFTA = 36;
 let draggedItemIndex = null;
@@ -217,6 +269,132 @@ function getSelectedSidebarAracGerec() {
     return selected;
 }
 
+// --- YÖNTEM-TEKNİK SIDEBAR FONKSİYONLARI ---
+async function loadAllYontemTeknikTipleri() {
+    try {
+        const response = await fetch('/api/yontem-teknik-tipleri');
+        if (!response.ok) throw new Error('Yöntem ve teknik tipleri sunucudan yüklenemedi.');
+        const data = await response.json();
+        tumYontemTeknikListesi = Array.isArray(data) ? data : [];
+        populateSidebarYontemTeknik();
+    } catch (error) {
+        console.error("Yöntem ve teknik tipleri yükleme hatası:", error);
+        showMessage(`❌ Yöntem/teknik listesi yüklenemedi: ${error.message}`, 'error');
+        tumYontemTeknikListesi = ["Anlatım", "Soru-Cevap", "Problem Çözme", "Grup Çalışması"];
+        populateSidebarYontemTeknik();
+    }
+}
+
+function populateSidebarYontemTeknik() {
+    const listContainer = document.getElementById('sidebarYontemTeknikList');
+    if (!listContainer) return;
+    listContainer.innerHTML = '';
+    tumYontemTeknikListesi.sort().forEach((item, index) => {
+        const id = `sidebar-yt-${index}`;
+        const checkboxItem = document.createElement('div');
+        checkboxItem.className = 'checkbox-item sidebar-arac-gerec-item'; // Stil aynı kalabilir
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox'; checkbox.id = id; checkbox.value = item;
+        const label = document.createElement('label');
+        label.htmlFor = id; label.textContent = item;
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-arac-gerec-btn'; // Stil aynı kalabilir
+        deleteBtn.innerHTML = '<i class="fas fa-minus-circle"></i>';
+        deleteBtn.title = `"${item}" adlı yöntemi/tekniği sil`;
+        deleteBtn.onclick = () => deleteYontemTeknikTipi(item);
+        checkboxItem.appendChild(checkbox);
+        checkboxItem.appendChild(label);
+        checkboxItem.appendChild(deleteBtn);
+        listContainer.appendChild(checkboxItem);
+    });
+}
+
+async function addCustomYontemTeknik() {
+    const inputElement = document.getElementById('customYontemTeknikInput');
+    if (!inputElement) return;
+    const newItemName = inputElement.value.trim();
+    if (!newItemName) {
+        showMessage("Lütfen eklenecek yöntem/teknik adını girin.", "error"); return;
+    }
+    if (tumYontemTeknikListesi.includes(newItemName)) {
+        showMessage(`"${newItemName}" zaten listede mevcut.`, 'error'); return;
+    }
+    try {
+        const response = await fetch('/api/yontem-teknik-tipleri', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newItemName })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || `Sunucu hatası: ${response.status}`);
+        await loadAllYontemTeknikTipleri(); 
+        inputElement.value = ''; 
+        showMessage(`"${newItemName}" başarıyla eklendi.`, 'success');
+    } catch (error) {
+        console.error("Yeni yöntem/teknik ekleme hatası:", error);
+        showMessage(`❌ Yöntem/teknik eklenirken hata: ${error.message}`, 'error');
+    }
+}
+
+async function deleteYontemTeknikTipi(itemName) {
+    if (!confirm(`"${itemName}" adlı yöntemi/tekniği silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`)) return;
+    try {
+        const response = await fetch(`/api/yontem-teknik-tipleri/${encodeURIComponent(itemName)}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || `Sunucu hatası: ${response.status}`);
+        showMessage(result.message, 'success');
+        await loadAllYontemTeknikTipleri(); 
+    } catch (error) {
+        console.error("Yöntem/teknik silme hatası:", error);
+        showMessage(`❌ Yöntem/teknik silinirken hata: ${error.message}`, 'error');
+    }
+}
+
+function getSelectedSidebarYontemTeknik() {
+    const selected = [];
+    const checkboxes = document.querySelectorAll('#sidebarYontemTeknikList input[type="checkbox"]:checked');
+    checkboxes.forEach(cb => selected.push(cb.value));
+    return selected;
+}
+
+function applyYontemTeknikAction(actionType) {
+    const selectedItems = getSelectedSidebarYontemTeknik();
+    if (selectedItems.length === 0 && (actionType.includes('esitle') || actionType.includes('ekle'))) {
+        showMessage("Lütfen kenar çubuğundan en az bir yöntem/teknik seçin.", "error"); return;
+    }
+    const seciliHaftaElements = document.querySelectorAll('#haftaContainer .week-checkbox:checked:not(:disabled)');
+    const seciliHaftaOriginalWeeks = Array.from(seciliHaftaElements).map(cb => {
+        const idParts = cb.id.split('-');
+        if (idParts.length === 2 && idParts[0] === 'week') return parseInt(idParts[1]);
+        return null;
+    }).filter(id => id !== null);
+
+    if ((actionType.includes('Secili')) && seciliHaftaOriginalWeeks.length === 0) {
+        showMessage("Lütfen yıllık plandan en az bir akademik hafta seçin.", "error"); return;
+    }
+    let changed = false;
+    baseAcademicPlan.forEach(baseHafta => {
+        const isTargetWeek = actionType.includes('Tum') || (actionType.includes('Secili') && seciliHaftaOriginalWeeks.includes(baseHafta.originalAcademicWeek));
+        if (isTargetWeek) {
+            changed = true;
+            if (actionType.startsWith('esitle')) baseHafta.yontemTeknik = [...selectedItems];
+            else if (actionType.startsWith('ekle')) {
+                baseHafta.yontemTeknik = baseHafta.yontemTeknik || [];
+                selectedItems.forEach(item => { if (!baseHafta.yontemTeknik.includes(item)) baseHafta.yontemTeknik.push(item); });
+            }
+        }
+    });
+    yillikPlan.forEach(planHafta => {
+        if (planHafta.type === 'academic') {
+            const correspondingBase = baseAcademicPlan.find(bh => bh.originalAcademicWeek === planHafta.originalAcademicWeek);
+            if (correspondingBase) planHafta.yontemTeknik = [...(correspondingBase.yontemTeknik || [])];
+        }
+    });
+    if (changed) { renderYillikPlan(); showMessage("Yöntem ve teknikler güncellendi.", "success"); }
+    else showMessage("İşlem yapılacak uygun hafta bulunamadı veya değişiklik yapılmadı.", "error");
+}
+
+
 function applyAracGerecAction(actionType) {
     const selectedAracGerecInSidebar = getSelectedSidebarAracGerec();
     if (selectedAracGerecInSidebar.length === 0 && (actionType.includes('esitle') || actionType.includes('ekle'))) {
@@ -287,6 +465,61 @@ function getAdditionalTeachers() {
     return teachers;
 }
 
+// --- YÖNTEM/TEKNİK GÖRSELLEŞTİRME ---
+function toggleYontemTeknik(academicWeekNum, item, selectedContainer) {
+    const planEntry = yillikPlan.find(h => h.type === 'academic' && h.originalAcademicWeek === academicWeekNum);
+    if (!planEntry) return;
+    planEntry.yontemTeknik = planEntry.yontemTeknik || [];
+    const index = planEntry.yontemTeknik.indexOf(item);
+    if (index > -1) planEntry.yontemTeknik.splice(index, 1); else planEntry.yontemTeknik.push(item);
+    const basePlanEntry = baseAcademicPlan.find(h => h.originalAcademicWeek === academicWeekNum);
+    if(basePlanEntry) basePlanEntry.yontemTeknik = [...planEntry.yontemTeknik];
+    updateYontemTeknikDisplay(selectedContainer, planEntry.yontemTeknik, academicWeekNum);
+}
+
+function updateYontemTeknikDisplay(container, items, academicWeekNum) {
+    container.innerHTML = '';
+    (items || []).forEach(item => {
+        const tag = document.createElement('span');
+        tag.className = 'arac-gerec-tag'; // Stili yeniden kullan
+        tag.innerHTML = `${item} <span class="remove" onclick="removeYontemTeknik(${academicWeekNum}, '${item}')">×</span>`;
+        container.appendChild(tag);
+    });
+    if (!items || items.length === 0) container.innerHTML = '<span style="color: #999; font-size: 10px;">Yöntem/teknik seçin</span>';
+}
+
+function removeYontemTeknik(academicWeekNum, item) {
+    const planEntry = yillikPlan.find(h => h.type === 'academic' && h.originalAcademicWeek === academicWeekNum);
+    if (!planEntry || !planEntry.yontemTeknik) return;
+    const index = planEntry.yontemTeknik.indexOf(item);
+    if (index > -1) {
+        planEntry.yontemTeknik.splice(index, 1);
+        const basePlanEntry = baseAcademicPlan.find(h => h.originalAcademicWeek === academicWeekNum);
+        if(basePlanEntry && basePlanEntry.yontemTeknik) {
+            const baseIndex = basePlanEntry.yontemTeknik.indexOf(item);
+            if (baseIndex > -1) basePlanEntry.yontemTeknik.splice(baseIndex, 1);
+        }
+        renderYillikPlan();
+    }
+}
+
+function createYontemTeknikSelector(academicWeekNum, selectedItems = []) { 
+    const container = document.createElement('div'); container.className = 'arac-gerec-container';
+    const selected = document.createElement('div'); selected.className = 'arac-gerec-selected';
+    selected.onclick = () => toggleDropdown(selected.nextElementSibling);
+    const dropdown = document.createElement('div'); dropdown.className = 'arac-gerec-dropdown';
+    tumYontemTeknikListesi.forEach(item => {
+        const option = document.createElement('div'); option.className = 'arac-gerec-option';
+        option.textContent = item;
+        option.onclick = () => toggleYontemTeknik(academicWeekNum, item, selected);
+        dropdown.appendChild(option);
+    });
+    container.appendChild(selected); container.appendChild(dropdown);
+    updateYontemTeknikDisplay(selected, selectedItems || [], academicWeekNum);
+    return container;
+}
+
+
 // --- HAFTALIK PLAN GÖRSELLEŞTİRME VE DÜZENLEME ---
 function toggleDropdown(dropdown) { dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block'; }
 function toggleAracGerec(academicWeekNum, item, selectedContainer) {
@@ -322,26 +555,6 @@ function removeAracGerec(academicWeekNum, item) {
         }
         renderYillikPlan();
     }
-}
-function createYontemSelect(academicWeekNum, selectedItems = []) {
-    const select = document.createElement('select');
-    select.multiple = true; select.style.height = '24px'; select.style.fontSize = '10px';
-    yontemTeknikler.forEach(teknik => {
-        const option = document.createElement('option');
-        option.value = teknik; option.textContent = teknik;
-        if(Array.isArray(selectedItems)) option.selected = selectedItems.includes(teknik);
-        select.appendChild(option);
-    });
-    select.onchange = () => {
-        const selectedValues = Array.from(select.selectedOptions).map(opt => opt.value);
-        const planEntry = yillikPlan.find(h => h.type === 'academic' && h.originalAcademicWeek === academicWeekNum);
-        if (planEntry) {
-            planEntry.yontemTeknik = selectedValues;
-            const basePlanEntry = baseAcademicPlan.find(h => h.originalAcademicWeek === academicWeekNum);
-            if(basePlanEntry) basePlanEntry.yontemTeknik = [...selectedValues];
-        }
-    };
-    return select;
 }
 function createAracGerecSelector(academicWeekNum, selectedItems = []) { 
     const container = document.createElement('div'); container.className = 'arac-gerec-container';
@@ -396,7 +609,7 @@ function renderYillikPlan() {
             haftaDiv.appendChild(kazanimInput);
             const aracGerecContainer = createAracGerecSelector(haftaData.originalAcademicWeek, haftaData.aracGerec || []);
             haftaDiv.appendChild(aracGerecContainer);
-            const yontemContainer = document.createElement('div'); yontemContainer.appendChild(createYontemSelect(haftaData.originalAcademicWeek, haftaData.yontemTeknik || []));
+            const yontemContainer = createYontemTeknikSelector(haftaData.originalAcademicWeek, haftaData.yontemTeknik || []);
             haftaDiv.appendChild(yontemContainer);
             const editBtn = document.createElement('button'); editBtn.type = 'button'; editBtn.innerHTML = '✏️'; editBtn.onclick = () => alert("Bu özellik yapım aşamasındadır.");
             haftaDiv.appendChild(editBtn);
@@ -671,7 +884,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 document.addEventListener('DOMContentLoaded', async function() {
     populateEgitimOgretimYiliOptions();
-    await loadAllAracGerecTipleri(); 
+    await Promise.all([loadAllAracGerecTipleri(), loadAllYontemTeknikTipleri()]);
     document.getElementById('addTeacherBtn').addEventListener('click', () => addTeacherRow());
     const egitimOgretimYiliSelect = document.getElementById('egitimOgretimYili');
     if (egitimOgretimYiliSelect) egitimOgretimYiliSelect.addEventListener('change', setDefaultBaslangicHaftasi);
@@ -682,12 +895,29 @@ document.addEventListener('DOMContentLoaded', async function() {
     const globalBackBtn = document.getElementById('sidebarGlobalBackBtn');
     if(globalBackBtn) globalBackBtn.addEventListener('click', function(e) { e.preventDefault(); navigateToView(this.dataset.viewTarget); });
 
+    // Ders Saati Yönetimi Butonları
+    document.querySelectorAll('.ders-saati-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            selectDersSaati(this.dataset.saat);
+        });
+    });
+    document.getElementById('applyDersSaatiToAllBtn')?.addEventListener('click', applyDersSaatiToAll);
+
+    // Araç-Gereç Butonları
     const addCustomAracGerecBtn = document.getElementById('addCustomAracGerecBtn');
     if(addCustomAracGerecBtn) addCustomAracGerecBtn.addEventListener('click', addCustomAracGerec);
-    document.getElementById('esitleTumHaftalarBtn')?.addEventListener('click', () => applyAracGerecAction('esitleTum'));
-    document.getElementById('esitleSeciliHaftalarBtn')?.addEventListener('click', () => applyAracGerecAction('esitleSecili'));
-    document.getElementById('ekleTumHaftalaraBtn')?.addEventListener('click', () => applyAracGerecAction('ekleTum'));
-    document.getElementById('ekleSeciliHaftalaraBtn')?.addEventListener('click', () => applyAracGerecAction('ekleSecili'));
+    document.getElementById('agEsitleTumHaftalarBtn')?.addEventListener('click', () => applyAracGerecAction('esitleTum'));
+    document.getElementById('agEsitleSeciliHaftalarBtn')?.addEventListener('click', () => applyAracGerecAction('esitleSecili'));
+    document.getElementById('agEkleTumHaftalaraBtn')?.addEventListener('click', () => applyAracGerecAction('ekleTum'));
+    document.getElementById('agEkleSeciliHaftalaraBtn')?.addEventListener('click', () => applyAracGerecAction('ekleSecili'));
+
+    // Yöntem-Teknik Butonları
+    const addCustomYontemTeknikBtn = document.getElementById('addCustomYontemTeknikBtn');
+    if(addCustomYontemTeknikBtn) addCustomYontemTeknikBtn.addEventListener('click', addCustomYontemTeknik);
+    document.getElementById('ytEsitleTumHaftalarBtn')?.addEventListener('click', () => applyYontemTeknikAction('esitleTum'));
+    document.getElementById('ytEsitleSeciliHaftalarBtn')?.addEventListener('click', () => applyYontemTeknikAction('esitleSecili'));
+    document.getElementById('ytEkleTumHaftalaraBtn')?.addEventListener('click', () => applyYontemTeknikAction('ekleTum'));
+    document.getElementById('ytEkleSeciliHaftalaraBtn')?.addEventListener('click', () => applyYontemTeknikAction('ekleSecili'));
     const defaultDersSaati = document.getElementById('dersSaati').value || '4';
     if (baseAcademicPlan.length === 0) {
         for (let i = 1; i <= TOPLAM_AKADEMIK_HAFTA; i++) {

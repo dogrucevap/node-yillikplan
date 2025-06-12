@@ -63,6 +63,16 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
         }
       });
 
+      db.run(`CREATE TABLE IF NOT EXISTS yontem_teknik_tipleri (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL)`, (err) => {
+        if (err) console.error("yontem_teknik_tipleri tablosu oluşturma hatası:", err.message);
+        else {
+          const defaultYontemTeknik = ["Anlatım", "Soru-Cevap", "Problem Çözme", "Gösterip Yaptırma", "Grup Çalışması", "Proje", "Beyin Fırtınası", "Tartışma", "Örnek Olay", "Oyun", "Drama", "Deney"];
+          const stmt = db.prepare("INSERT OR IGNORE INTO yontem_teknik_tipleri (name) VALUES (?)");
+          defaultYontemTeknik.forEach(name => stmt.run(name));
+          stmt.finalize();
+        }
+      });
+
       db.run(`CREATE TABLE IF NOT EXISTS plan_hafta_arac_gerec (
         academic_week_id INTEGER, arac_gerec_tip_id INTEGER,
         PRIMARY KEY (academic_week_id, arac_gerec_tip_id),
@@ -342,6 +352,52 @@ app.delete('/api/arac-gerec-tipleri/:name', (req, res) => {
             res.status(200).json({ message: `"${nameToDelete}" başarıyla silindi.` });
         } else {
             res.status(404).json({ error: `"${nameToDelete}" adında bir araç-gereç bulunamadı.` });
+        }
+    });
+});
+
+// Yöntem ve Teknik Tipleri için API Endpoint'leri
+app.get('/api/yontem-teknik-tipleri', (req, res) => {
+    db.all("SELECT name FROM yontem_teknik_tipleri ORDER BY name ASC", [], (err, rows) => {
+        if (err) {
+            console.error("Yöntem/teknik tipleri listeleme hatası:", err.message);
+            return res.status(500).json({ error: "Yöntem/teknik tipleri listelenirken bir sunucu hatası oluştu." });
+        }
+        res.json(rows.map(row => row.name));
+    });
+});
+
+app.post('/api/yontem-teknik-tipleri', (req, res) => {
+    const { name } = req.body;
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+        return res.status(400).json({ error: "Yöntem/teknik adı gereklidir." });
+    }
+    const trimmedName = name.trim();
+    const stmt = db.prepare("INSERT OR IGNORE INTO yontem_teknik_tipleri (name) VALUES (?)");
+    stmt.run(trimmedName, function(err) {
+        if (err) {
+            console.error("Yeni yöntem/teknik tipi ekleme hatası:", err.message);
+            return res.status(500).json({ error: "Yöntem/teknik tipi eklenirken bir sunucu hatası oluştu." });
+        }
+        res.status(201).json({ message: `"${trimmedName}" başarıyla eklendi.` });
+    });
+    stmt.finalize();
+});
+
+app.delete('/api/yontem-teknik-tipleri/:name', (req, res) => {
+    const nameToDelete = req.params.name;
+    if (!nameToDelete) {
+        return res.status(400).json({ error: "Silinecek yöntem/teknik adı gereklidir." });
+    }
+    db.run("DELETE FROM yontem_teknik_tipleri WHERE name = ?", [nameToDelete], function(err) {
+        if (err) {
+            console.error("Yöntem/teknik tipi silme hatası:", err.message);
+            return res.status(500).json({ error: "Yöntem/teknik tipi silinirken bir sunucu hatası oluştu." });
+        }
+        if (this.changes > 0) {
+            res.status(200).json({ message: `"${nameToDelete}" başarıyla silindi.` });
+        } else {
+            res.status(404).json({ error: `"${nameToDelete}" adında bir yöntem/teknik bulunamadı.` });
         }
     });
 });

@@ -30,8 +30,53 @@
                 <div id="mainMenuView" class="sidebar-view active-view">
                     <ul class="sidebar-menu">
                         <li><a href="#" class="sidebar-menu-item" data-view-target="aracGerecView"><i class="fas fa-tools"></i> Araç-Gereç Yönetimi</a></li>
+                        <li><a href="#" class="sidebar-menu-item" data-view-target="dersSaatiView"><i class="fas fa-clock"></i> Ders Saati Yönetimi</a></li>
+                        <li><a href="#" class="sidebar-menu-item" data-view-target="yontemTeknikView"><i class="fas fa-lightbulb"></i> Yöntem ve Teknik Yönetimi</a></li>
                         <!-- Diğer ayar seçenekleri buraya eklenebilir -->
                     </ul>
+                </div>
+
+                <!-- Ders Saati Yönetimi Görünümü -->
+                <div id="dersSaatiView" class="sidebar-view">
+                    <div class="sidebar-view-content">
+                        <div id="dersSaatiBtnContainer" class="ders-saati-container">
+                            <!-- Ders saati butonları JS ile eklenebilir veya statik olarak burada olabilir -->
+                            <button class="ders-saati-btn" data-saat="1">1 Saat</button>
+                            <button class="ders-saati-btn" data-saat="2">2 Saat</button>
+                            <button class="ders-saati-btn" data-saat="3">3 Saat</button>
+                            <button class="ders-saati-btn" data-saat="4">4 Saat</button>
+                            <button class="ders-saati-btn" data-saat="5">5 Saat</button>
+                            <button class="ders-saati-btn" data-saat="6">6 Saat</button>
+                            <button class="ders-saati-btn" data-saat="7">7 Saat</button>
+                            <button class="ders-saati-btn" data-saat="8">8 Saat</button>
+                        </div>
+                        <div class="sidebar-actions" style="padding: 15px; border-top: 1px solid #eee; margin-top:15px;">
+                            <button type="button" id="applyDersSaatiToAllBtn" class="sidebar-action-btn">Tüm Haftalara Uygula</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Yöntem ve Teknik Yönetimi Görünümü -->
+                <div id="yontemTeknikView" class="sidebar-view">
+                    <div class="sidebar-view-content">
+                        <div id="sidebarYontemTeknikList" class="checkbox-group sidebar-checkbox-group">
+                            <!-- Yöntem ve teknik checkbox'ları buraya JS ile eklenecek -->
+                        </div>
+                        <div class="form-group" style="padding: 0 15px; margin-top: 15px;">
+                            <div style="display: flex; gap: 5px; align-items: center;">
+                                <input type="text" id="customYontemTeknikInput" placeholder="Yeni yöntem/teknik ekle..." style="font-size:13px; padding:8px; flex-grow:1;">
+                                <button type="button" id="addCustomYontemTeknikBtn" class="add-item-btn">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="sidebar-actions" style="padding: 15px; border-top: 1px solid #eee; margin-top:15px;">
+                            <button type="button" id="ytEsitleTumHaftalarBtn" class="sidebar-action-btn">Tüm Haftaları Eşitle</button>
+                            <button type="button" id="ytEsitleSeciliHaftalarBtn" class="sidebar-action-btn" disabled>Seçili Haftaları Eşitle</button>
+                            <button type="button" id="ytEkleTumHaftalaraBtn" class="sidebar-action-btn">Tüm Haftalara Ekle</button>
+                            <button type="button" id="ytEkleSeciliHaftalaraBtn" class="sidebar-action-btn" disabled>Seçili Haftalara Ekle</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Araç-Gereç Yönetimi Görünümü -->
@@ -53,10 +98,10 @@
                             </div>
                         </div>
                         <div class="sidebar-actions" style="padding: 15px; border-top: 1px solid #eee; margin-top:15px;">
-                            <button type="button" id="esitleTumHaftalarBtn" class="sidebar-action-btn">Tüm Haftaları Eşitle</button>
-                            <button type="button" id="esitleSeciliHaftalarBtn" class="sidebar-action-btn" disabled>Seçili Haftaları Eşitle</button>
-                            <button type="button" id="ekleTumHaftalaraBtn" class="sidebar-action-btn">Tüm Haftalara Ekle</button>
-                            <button type="button" id="ekleSeciliHaftalaraBtn" class="sidebar-action-btn" disabled>Seçili Haftalara Ekle</button>
+                            <button type="button" id="agEsitleTumHaftalarBtn" class="sidebar-action-btn">Tüm Haftaları Eşitle</button>
+                            <button type="button" id="agEsitleSeciliHaftalarBtn" class="sidebar-action-btn" disabled>Seçili Haftaları Eşitle</button>
+                            <button type="button" id="agEkleTumHaftalaraBtn" class="sidebar-action-btn">Tüm Haftalara Ekle</button>
+                            <button type="button" id="agEkleSeciliHaftalaraBtn" class="sidebar-action-btn" disabled>Seçili Haftalara Ekle</button>
                         </div>
                     </div>
                 </div>
@@ -187,7 +232,7 @@
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <input type="text" id="currentPlanNameInput" placeholder="Plan adı (boş bırakılırsa otomatik adlandırılır)" style="flex-grow: 1;">
                         <button type="button" class="demo-btn" onclick="saveCurrentPlan()" style="background: #2ecc71; padding: 12px 20px; white-space: nowrap;">
-                            💾 Mevcut Planı Kaydet/Güncelle
+                            💾 Kaydet
                         </button>
                     </div>
                     <small style="display: block; margin-top: 5px; color: #555;">Var olan bir plan adını girerseniz, o plan güncellenir. Yeni bir ad girerseniz veya boş bırakırsanız yeni plan olarak kaydedilir.</small>
