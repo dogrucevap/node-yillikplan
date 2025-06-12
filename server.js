@@ -290,11 +290,12 @@ app.post('/generate-plan', async (req, res) => {
 
     haftalikPlan.forEach(haftaData => {
         if (haftaData.type === 'holiday') {
+            const labelText = haftaData.tarih ? `${haftaData.label} (${haftaData.tarih})` : haftaData.label;
             tableRows.push(new TableRow({
                 children: [
                     new TableCell({
-                        children: [new Paragraph({ text: haftaData.label, alignment: AlignmentType.CENTER, style: "strong" })],
-                        columnSpan: 8,
+                        children: [new Paragraph({ text: labelText, alignment: AlignmentType.CENTER, style: "strong" })],
+                        columnSpan: 8, // Tüm sütunları kapla
                         shading: { type: ShadingType.SOLID, color: "D3D3D3", fill: "D3D3D3" },
                         verticalAlign: "center"
                     }),

@@ -533,10 +533,13 @@ function updateAllWeekDates() {
                 }
             }
             if(isHoliday) {
-                for(let j=0; j < holidayDetails.duration; j++) {
-                     newPlan.push({ type: 'holiday', label: holidayDetails.label, tarih: '' });
-                }
-                i += holidayDetails.duration -1;
+                newPlan.push({ 
+                    type: 'holiday', 
+                    label: holidayDetails.label, 
+                    tarih: '', // Başlangıç haftası seçilmediğinde tarih boş
+                    duration: holidayDetails.duration 
+                });
+                i += holidayDetails.duration -1; // i'yi doğru şekilde artır
             } else if (temporaryAcademicWeeks.length > 0) {
                 newPlan.push({ ...temporaryAcademicWeeks.shift(), type: 'academic', tarih: '' });
                 academicPlanIndex++;
@@ -564,14 +567,15 @@ function updateAllWeekDates() {
         for (const holidayKey in TATIL_DONEMLERI) {
             if (TATIL_DONEMLERI[holidayKey].afterAcademicWeek === current_bp_idx) {
                  const holiday = TATIL_DONEMLERI[holidayKey];
-                 for (let j = 0; j < holiday.duration; j++) {
-                    newPlan.push({ 
-                        type: 'holiday', 
-                        label: holiday.label, 
-                        tarih: formatDateRange(new Date(currentMonday), 1) // Her tatil haftası için tarih hesapla
-                    });
-                    currentMonday.setDate(currentMonday.getDate() + 7); // currentMonday'i her tatil haftası için ilerlet
-                 }
+                 const holidayStartDate = new Date(currentMonday);
+                 // Çok haftalı tatiller için tek bir giriş oluştur, tarih aralığını tam süreyi kapsayacak şekilde ayarla
+                 newPlan.push({ 
+                    type: 'holiday', 
+                    label: holiday.label, 
+                    tarih: formatDateRange(holidayStartDate, holiday.duration), // Tam süreyi kapsayan tarih aralığı
+                    duration: holiday.duration // Tatil süresini ekle
+                 });
+                 currentMonday.setDate(currentMonday.getDate() + (7 * holiday.duration)); // currentMonday'i tatil süresi kadar ilerlet
                  // Bu 'afterAcademicWeek' değeri için bir tatil periyodu işlendi.
                  // Aynı noktada başka bir tatil periyodunun başlamadığını varsayarak döngüden çık.
                  break; 
@@ -604,14 +608,14 @@ function updateAllWeekDates() {
     for (const holidayKey in TATIL_DONEMLERI) {
         if (TATIL_DONEMLERI[holidayKey].afterAcademicWeek === baseAcademicPlan.length) {
              const holiday = TATIL_DONEMLERI[holidayKey];
-             for (let j = 0; j < holiday.duration; j++) {
-                newPlan.push({ 
-                    type: 'holiday', 
-                    label: holiday.label, 
-                    tarih: formatDateRange(new Date(currentMonday), 1)
-                });
-                currentMonday.setDate(currentMonday.getDate() + 7);
-             }
+             const holidayStartDate = new Date(currentMonday);
+             newPlan.push({ 
+                type: 'holiday', 
+                label: holiday.label, 
+                tarih: formatDateRange(holidayStartDate, holiday.duration),
+                duration: holiday.duration
+             });
+             currentMonday.setDate(currentMonday.getDate() + (7 * holiday.duration));
              // Bu afterAcademicWeek değeri için bir tatil periyodu işlendi.
              break;
         }
