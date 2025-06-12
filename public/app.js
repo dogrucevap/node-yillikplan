@@ -19,6 +19,7 @@ const sidebarGlobalBackBtn = document.getElementById('sidebarGlobalBackBtn');
 let currentSidebarView = 'mainMenuView';
 
 function openSidebar() {
+    console.log("openSidebar fonksiyonu çağrıldı. settingsSidebar elementi:", settingsSidebar);
     if (settingsSidebar) {
         settingsSidebar.classList.add('open');
     }
@@ -1534,27 +1535,3 @@ document.addEventListener('DOMContentLoaded', async function() {
         } finally { generateBtn.disabled = false; loading.style.display = 'none'; }
     });
 });
-
-</final_file_content>
-
-IMPORTANT: For any future changes to this file, use the final_file_content shown above as your reference. This content reflects the current state of the file, including any auto-formatting (e.g., if you used single quotes but the formatter converted them to double quotes). Always base your SEARCH/REPLACE operations on this final version to ensure accuracy.
-
-<environment_details>
-# VSCode Visible Files
-public/app.js
-
-# VSCode Open Tabs
-server.js
-public/styles.css
-public/index.html
-public/app.js
-
-# Current Time
-6/13/2025, 2:41:04 AM (Europe/Istanbul, UTC+3:00)
-
-# Context Window Usage
-418,394 / 1,048.576K tokens used (40%)
-
-# Current Mode
-ACT MODE
-</environment_details>

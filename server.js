@@ -6,7 +6,7 @@ const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 8080; // Portu ortam değişkeninden veya varsayılan olarak 8080 al
 const DB_PATH = path.join(__dirname, 'yillik_planlar.sqlite');
 
 const TUM_ARAC_GEREC_LISTESI = [
@@ -675,12 +675,11 @@ app.post('/generate-plan', async (req, res) => {
 });
 
 const isProduction = process.env.NODE_ENV === 'production';
-const baseUrl = isProduction ? 'https://node-yillikplan-1074807643813.europe-west3.run.app' : 'http://localhost:8080';
+const baseUrl = isProduction ? 'https://node-yillikplan-1074807643813.europe-west3.run.app' : `http://localhost:${PORT}`; // PORT değişkenini kullan
 console.log(`Environment: ${isProduction ? 'Cloud Run' : 'Local'}`);
 
-const port = process.env.PORT || 8080;
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Server running on port ${port}`);
+app.listen(PORT, 'localhost', () => { // PORT değişkenini ve 'localhost'u kullan
+  console.log(`Server running on port ${PORT}`);
   console.log(`Base URL: ${baseUrl}`);
 });
 
