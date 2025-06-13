@@ -1147,3 +1147,58 @@ body.dragging-active, body.dragging-active * {
     border-bottom: 1px solid #777;
     height: 1px;
 }
+
+/* Kullanıcı Kimlik Doğrulama Bölümü Stilleri */
+.user-auth-section {
+    font-size: 14px; /* Temel font boyutundan biraz daha küçük */
+    color: #f0f0f0; /* Header arka planına uygun açık renk */
+}
+
+.user-auth-section .user-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
+    border: 1px solid #fff; /* Avatar etrafında ince bir çerçeve */
+}
+
+.user-auth-section .user-name {
+    font-weight: 500;
+}
+
+.user-auth-section .user-email {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.user-auth-section .auth-link {
+    color: #1abc9c; /* Header'a kontrast oluşturacak canlı bir renk */
+    text-decoration: none;
+    font-weight: 500;
+    padding: 5px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.user-auth-section .auth-link:hover {
+    background-color: #1abc9c;
+    color: white;
+}
+
+.user-auth-section .login-link {
+    border: 1px solid #1abc9c;
+}
+
+.user-auth-section .login-link:hover {
+    border-color: #1abc9c; /* Hover durumunda da border kalsın */
+}
+
+.user-auth-section .logout-link {
+    color: #e74c3c; /* Çıkış için farklı bir renk */
+}
+
+.user-auth-section .logout-link:hover {
+    background-color: #e74c3c;
+    color: white;
+}

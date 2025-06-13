@@ -7,7 +7,8 @@ function switchTab(tabId) {
     const buttonForTab = Array.from(document.querySelectorAll('.tab-button')).find(btn => btn.getAttribute('onclick')?.includes(`switchTab('${tabId}')`));
     if (buttonForTab) buttonForTab.classList.add('active');
     if (tabId === 'yillik-plan') {
-        loadSavedPlans();
+        // loadSavedPlans(); // Bu zaten DOMContentLoaded içinde çağrılıyor, burada tekrar gerek yok gibi.
+        // Ancak sekmeye her geçildiğinde güncel kalması isteniyorsa kalabilir. Şimdilik yoruma alıyorum.
         updateSidebarActionButtonsState();
         updateYillikPlanBasligi();
         renderPlanImzalari();
@@ -22,6 +23,74 @@ function updateYillikPlanBasligi() {
     const baslikElement = document.getElementById('yillikPlanBasligi');
     if (baslikElement) {
         baslikElement.textContent = `T.C. MİLLİ EĞİTİM BAKANLIĞI ${okulAdi.toUpperCase()} ${egitimYili} EĞİTİM ÖĞRETİM YILI ${dersAdi.toUpperCase()} ${sinif.toUpperCase()} DERSİ ÜNİTELENDİRİLMİŞ YILLIK PLANI`;
+    }
+}
+
+// --- KİMLİK DOĞRULAMA KONTROLÜ ---
+async function checkAuthStatus() {
+    const userAuthSection = document.getElementById('userAuthSection');
+    if (!userAuthSection) return;
+
+    try {
+        const response = await fetch('/api/auth/status');
+        if (!response.ok) {
+            console.error('Kimlik doğrulama durumu alınamadı:', response.status);
+            userAuthSection.innerHTML = '<a href="/auth/google" class="auth-link login-link">Google ile Giriş Yap</a>';
+            return;
+        }
+        const authData = await response.json();
+
+        if (authData.isAuthenticated && authData.user) {
+            let userInfoHTML = '';
+            if (authData.user.photo) {
+                userInfoHTML += `<img src="${authData.user.photo}" alt="${authData.user.displayName}" class="user-avatar"> `;
+            }
+            userInfoHTML += `<span class="user-name">${authData.user.displayName || 'Kullanıcı'}</span>`;
+            if (authData.user.email) {
+                userInfoHTML += ` <span class="user-email">(${authData.user.email})</span>`;
+            }
+            userInfoHTML += ` | <a href="/auth/logout" class="auth-link logout-link">Çıkış Yap</a>`;
+            userAuthSection.innerHTML = userInfoHTML;
+
+            // Google ile giriş yapan kullanıcıyı öğretmen olarak ayarla
+            if (authData.user.displayName) {
+                await loadAllPersonal(); // Öğretmen listesini sunucudan tazeleyelim
+
+                const loggedInUserName = authData.user.displayName;
+                // Sunucu tarafı zaten "Öğretmen" unvanıyla ekliyor olmalı.
+                const foundTeacher = tumPersonalListesi.find(p => p.name === loggedInUserName && (p.branch === "Öğretmen" || !p.isMudur) );
+
+                if (foundTeacher) {
+                    const isAlreadyPrimaryTeacher = planaEklenenPersonal.some(p => p.id === foundTeacher.id && !p.isMudur);
+                    
+                    if (!isAlreadyPrimaryTeacher) {
+                        // Mevcut dersi veren öğretmenleri (müdür olmayanları) temizle
+                        const mudurler = planaEklenenPersonal.filter(p => p.isMudur);
+                        planaEklenenPersonal = [...mudurler]; // Sadece müdürleri koru
+
+                        // Yeni giriş yapan öğretmeni ekle
+                        planaEklenenPersonal.push({
+                            id: foundTeacher.id,
+                            name: foundTeacher.name,
+                            branch: foundTeacher.branch || "Öğretmen", // DB'den gelen unvanı kullan, yoksa default
+                            isMudur: false
+                        });
+                        
+                        sortAndRenderImzaAlani(); // İmza alanlarını ve sidebar seçimlerini günceller
+                                                
+                        showMessage(`Hoş geldiniz ${loggedInUserName}! Planda varsayılan öğretmen olarak ayarlandınız.`, "success");
+                    }
+                } else {
+                    console.warn(`Giriş yapan kullanıcı (${loggedInUserName}) öğretmen listesinde (güncelleme sonrası) bulunamadı veya unvanı "Öğretmen" değil.`);
+                }
+            }
+
+        } else {
+            userAuthSection.innerHTML = '<a href="/auth/google" class="auth-link login-link">Google ile Giriş Yap</a>';
+        }
+    } catch (error) {
+        console.error('Kimlik doğrulama durumu alınırken hata:', error);
+        userAuthSection.innerHTML = '<a href="/auth/google" class="auth-link login-link">Google ile Giriş Yap (Hata)</a>';
     }
 }
 
@@ -200,7 +269,7 @@ function applyDersSaatiToAll() {
         return;
     }
     const newDersSaati = seciliDersSaati;
-    document.getElementById('dersSaati').value = newDersSaati; 
+    // document.getElementById('dersSaati').value = newDersSaati; // Bu ID'li element artık yok
     baseAcademicPlan.forEach(hafta => {
         hafta.dersSaati = newDersSaati;
     });
@@ -1561,7 +1630,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // await loadAllPersonal(); // Bu çağrı Promise.all içinde zaten var, gereksiz.
 
-    const defaultDersSaati = document.getElementById('dersSaati').value || '4';
+    const defaultDersSaati = '4'; // Varsayılan ders saati, HTML elementine bağlı değil
     if (baseAcademicPlan.length === 0) {
         for (let i = 1; i <= TOPLAM_AKADEMIK_HAFTA; i++) {
             baseAcademicPlan.push({ originalAcademicWeek: i, unite: '', konu: '', kazanim: '', dersSaati: defaultDersSaati, aracGerec: [], yontemTeknik: [], olcmeDeğerlendirme: '', aciklama: '' });
@@ -1570,7 +1639,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     setDefaultBaslangicHaftasi(); 
     loadSavedPlans(); // Kaydedilmiş planları ilk yüklemede yükle
     document.getElementById('baslangicHaftasi').addEventListener('change', updateAllWeekDates);
-    document.getElementById('dersSaati').addEventListener('change', updateDersSaati);
+    // document.getElementById('dersSaati').addEventListener('change', updateDersSaati); // Bu ID'li element artık yok
 
     // Yıllık plan başlığını temel bilgilerdeki değişikliklere göre güncelle
     ['okul', 'egitimOgretimYili', 'ders', 'sinif'].forEach(id => {
@@ -1644,4 +1713,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // HTML zaten 'temel-bilgiler' sekmesini varsayılan olarak aktif yapıyor.
     // switchTab('yillik-plan'); // Bu satır kaldırıldı.
+
+    checkAuthStatus(); // Sayfa yüklendiğinde kimlik doğrulama durumunu kontrol et
 });

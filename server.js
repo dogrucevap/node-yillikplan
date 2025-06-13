@@ -1,9 +1,13 @@
+require('dotenv').config(); // Ortam değişkenlerini .env dosyasından yükle
 const express = require('express');
 const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, AlignmentType, TextRun, ShadingType, Borders } = require('docx');
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
+const session = require('express-session');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const app = express();
 const PORT = process.env.PORT || 8080; // Portu ortam değişkeninden veya varsayılan olarak 8080 al
@@ -201,6 +205,148 @@ app.use(cors());
 app.use(express.json({limit: '5mb'}));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Session ve Passport Başlangıcı
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your_very_secret_key_12345', // GÜVENLİ BİR ANAHTAR KULLANIN! Ortam değişkeninden alınması önerilir.
+  resave: false,
+  saveUninitialized: false, // Oturum açılana kadar oturum oluşturma
+  cookie: { secure: process.env.NODE_ENV === 'production' } // HTTPS üzerinde çalışıyorsanız true yapın
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Google OAuth 2.0 Stratejisi
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID, // Google Cloud Console'dan alınacak
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET, // Google Cloud Console'dan alınacak
+    callbackURL: "/auth/google/callback" // Google Cloud Console'da yetkilendirilmiş yönlendirme URI'si ile eşleşmeli
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    // Bu fonksiyon, Google'dan başarılı bir kimlik doğrulama sonrası çağrılır.
+    // 'profile' nesnesi, kullanıcının Google profil bilgilerini içerir.
+    // Burada kullanıcıyı veritabanınıza kaydedebilir veya mevcut bir kullanıcıyı bulabilirsiniz.
+    // Şimdilik, profilin tamamını kullanıcı nesnesi olarak döndüreceğiz.
+    // console.log("Google Profile:", profile); // Gelen profili görmek için
+    // Örnek: Kullanıcıyı e-posta adresine göre bul veya oluştur
+    // User.findOrCreate({ googleId: profile.id, email: profile.emails[0].value, displayName: profile.displayName }, function (err, user) {
+    //   return cb(err, user);
+    // });
+    // return cb(null, profile); // Bu satır aşağıdaki mantığın içine taşındı
+
+    const userName = profile.displayName;
+    // const userEmail = profile.emails && profile.emails.length > 0 ? profile.emails[0].value : null; // E-posta şimdilik kullanılmıyor
+
+    if (userName) {
+      db.get("SELECT id, ad_soyad, unvan FROM ogretmenler WHERE ad_soyad = ?", [userName], (err, row) => {
+        if (err) {
+          console.error("Google Auth - Öğretmen kontrol hatası:", err.message);
+          return cb(err, profile); // Hata durumunda orijinal profille devam et
+        }
+        if (!row) {
+          // Öğretmen bulunamadı, yeni kayıt ekle
+          const stmt = db.prepare("INSERT INTO ogretmenler (ad_soyad, unvan) VALUES (?, ?)");
+          stmt.run(userName, "Öğretmen", function(insertErr) {
+            if (insertErr) {
+              console.error("Google Auth - Yeni öğretmen ekleme hatası:", insertErr.message);
+              // Hata olsa bile orijinal profille devam et, en azından giriş yapabilsin
+              return cb(null, profile);
+            } else {
+              console.log(`Google Auth ile yeni öğretmen eklendi: ${userName}, ID: ${this.lastID}`);
+              // Yeni eklenen öğretmenin bilgilerini profile ekleyebiliriz veya istemci tarafında yeniden yüklenmesini bekleyebiliriz.
+              // Şimdilik sadece logluyoruz ve orijinal profille devam ediyoruz.
+              // İstemci tarafı checkAuthStatus'ta loadAllPersonal çağıracak.
+              return cb(null, profile);
+            }
+            // stmt.finalize(); // finalize() run callback'i içinde olmalı veya run sonrası
+          });
+          stmt.finalize(); // stmt.run callback'i çağrıldıktan sonra finalize et
+        } else {
+          // Öğretmen zaten var, unvanını kontrol et ve gerekirse "Öğretmen" olarak güncelle (opsiyonel)
+          // Şimdilik, var olan kaydı değiştirmeyelim.
+          console.log(`Google Auth - Öğretmen zaten mevcut: ${userName}`);
+          return cb(null, profile); // Mevcut profille devam et
+        }
+      });
+    } else {
+      console.warn("Google Auth - Profilde displayName bulunamadı.");
+      return cb(null, profile); // Kullanıcı adı yoksa orijinal profille devam et
+    }
+  }
+));
+
+// Kullanıcıyı oturuma serialize etme
+passport.serializeUser(function(user, cb) {
+  process.nextTick(function() {
+    // 'user' nesnesinden hangi bilginin oturumda saklanacağını belirleyin.
+    // Genellikle kullanıcı ID'si saklanır. Google profili için 'id' kullanılabilir.
+    cb(null, { id: user.id, displayName: user.displayName, emails: user.emails, photos: user.photos });
+  });
+});
+
+// Kullanıcıyı oturumdan deserialize etme
+passport.deserializeUser(function(user, cb) {
+  process.nextTick(function() {
+    // Oturumda saklanan bilgiye göre tam kullanıcı nesnesini bulun/oluşturun.
+    // Şimdilik, saklanan kullanıcı nesnesini doğrudan döndürüyoruz.
+    return cb(null, user);
+  });
+});
+
+// Kimlik Doğrulama Rotaları
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })); // 'profile' ve 'email' bilgilerini istiyoruz
+
+app.get('/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/login-failed.html' }), // Başarısız olursa yönlendir
+  function(req, res) {
+    // Başarılı kimlik doğrulama, ana sayfaya veya kullanıcı paneline yönlendir.
+    res.redirect('/');
+  });
+
+// Oturum Durumu ve Çıkış Rotaları
+app.get('/api/auth/status', (req, res) => {
+  if (req.isAuthenticated()) {
+    res.json({
+      isAuthenticated: true,
+      user: {
+        displayName: req.user.displayName,
+        email: req.user.emails && req.user.emails.length > 0 ? req.user.emails[0].value : null,
+        photo: req.user.photos && req.user.photos.length > 0 ? req.user.photos[0].value : null
+      }
+    });
+  } else {
+    res.json({ isAuthenticated: false });
+  }
+});
+
+app.get('/auth/logout', (req, res, next) => {
+  req.logout(function(err) {
+    if (err) { return next(err); }
+    req.session.destroy((err) => { // Oturumu tamamen sonlandır
+        if (err) {
+            console.error("Oturum sonlandırma hatası:", err);
+            return res.status(500).send("Çıkış yapılamadı.");
+        }
+        res.clearCookie('connect.sid'); // Oturum çerezini temizle (genellikle 'connect.sid' olur)
+        res.redirect('/'); // Ana sayfaya yönlendir
+    });
+  });
+});
+
+// Örnek Korumalı Rota
+app.get('/api/profile', ensureAuthenticated, (req, res) => {
+  res.json({ message: "Bu korumalı bir rota!", user: req.user });
+});
+
+// Kimlik Doğrulama Kontrol Middleware'i
+function ensureAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ error: "Yetkisiz erişim. Lütfen giriş yapın." });
+}
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
