@@ -551,38 +551,9 @@ app.post('/generate-plan', async (req, res) => {
         ],
     }));
 
-    if (additionalTeachers && Array.isArray(additionalTeachers)) {
-        // Okul Müdürünü (varsa) listenin başına al (dersi veren öğretmenden sonra)
-        const principal = additionalTeachers.find(t => t.isPrincipal);
-        const otherTeachers = additionalTeachers.filter(t => !t.isPrincipal);
-        
-        const sortedTeachers = [];
-        if (principal) {
-            sortedTeachers.push(principal);
-        }
-        sortedTeachers.push(...otherTeachers);
 
-        sortedTeachers.forEach(teacher => {
-            // Dersi veren öğretmen zaten eklendi, onu tekrar ekleme
-            if (teacher.name === ogretmen && teacher.branch === "Öğretmen") return; 
-            // Eğer okul müdürü ve dersi veren öğretmen aynı kişiyse (ve branch "Öğretmen" değilse)
-            // bu kontrol daha karmaşıklaşabilir. Şimdilik basit tutuyoruz.
-            // Ya da daha iyisi, additionalTeachers'dan dersi veren öğretmeni filtrele.
-            // Ancak şu anki yapıda additionalTeachers dersi veren öğretmeni içermiyor olmalı.
-            signatureCells.push(new TableCell({
-                children: [
-                    new Paragraph({ children: [new TextRun({ text: teacher.name, bold: true, size: 22 })], alignment: AlignmentType.CENTER }),
-                    new Paragraph({ children: [new TextRun({ text: teacher.branch, size: 20 })], alignment: AlignmentType.CENTER }), // branch "Okul Müdürü" olacak
-                    new Paragraph({ text: "\n\nİmza", alignment: AlignmentType.CENTER }),
-                ],
-            }));
-        });
-    }
-    const signatureRows = [];
-    for (let i = 0; i < signatureCells.length; i += 3) { // Her satırda 3 imza alanı olacak
-        signatureRows.push(new TableRow({ children: signatureCells.slice(i, i + 3) }));
-    }
-    // --- BİTTİ: İMZA ALANI OLUŞTURMA ---
+    
+    
 
     const doc = new Document({
         creator: "Yillik Plan Oluşturucu",
@@ -682,5 +653,7 @@ app.listen(PORT, '0.0.0.0', () => { // PORT değişkenini ve tüm arayüzleri ku
   console.log(`Server running on port ${PORT}`);
   console.log(`Base URL: ${baseUrl}`);
 });
+
+// NOT: Cloud Run veya benzeri ortamlarda uygulamanın doğru çalışması için 0.0.0.0 adresini dinlemesi önemlidir.
 
 module.exports = app;

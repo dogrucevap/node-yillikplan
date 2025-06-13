@@ -8,7 +8,19 @@ function switchTab(tabId) {
     if (buttonForTab) buttonForTab.classList.add('active');
     if (tabId === 'yillik-plan') {
         loadSavedPlans(); 
-        updateSidebarActionButtonsState(); 
+        updateSidebarActionButtonsState();
+        updateYillikPlanBasligi(); 
+    }
+}
+
+function updateYillikPlanBasligi() {
+    const okulAdi = document.getElementById('okul')?.value || "[Okul Adı]";
+    const egitimYili = document.getElementById('egitimOgretimYili')?.value || "[Eğitim Öğretim Yılı]";
+    const dersAdi = document.getElementById('ders')?.value || "[Ders Adı]";
+    const sinif = document.getElementById('sinif')?.value || "[Sınıf]";
+    const baslikElement = document.getElementById('yillikPlanBasligi');
+    if (baslikElement) {
+        baslikElement.textContent = `T.C. MİLLİ EĞİTİM BAKANLIĞI ${okulAdi.toUpperCase()} ${egitimYili} EĞİTİM ÖĞRETİM YILI ${dersAdi.toUpperCase()} ${sinif.toUpperCase()} DERSİ ÜNİTELENDİRİLMİŞ YILLIK PLANI`;
     }
 }
 
@@ -1072,14 +1084,16 @@ function renderYillikPlan() {
             haftaDiv.appendChild(aracGerecContainer);
             const yontemContainer = createYontemTeknikSelector(haftaData.originalAcademicWeek, haftaData.yontemTeknik || []);
             haftaDiv.appendChild(yontemContainer);
-            const editBtn = document.createElement('button'); editBtn.type = 'button'; editBtn.innerHTML = '✏️'; editBtn.onclick = () => alert("Bu özellik yapım aşamasındadır.");
-            haftaDiv.appendChild(editBtn);
+            // Düzenle butonu kaldırıldı
+            // const editBtn = document.createElement('button'); editBtn.type = 'button'; editBtn.innerHTML = '✏️'; editBtn.onclick = () => alert("Bu özellik yapım aşamasındadır.");
+            // haftaDiv.appendChild(editBtn);
         } else { 
             const emptyDersSaatiCell = document.createElement('div'); haftaDiv.appendChild(emptyDersSaatiCell);
             const tatilAciklamaDiv = document.createElement('div'); tatilAciklamaDiv.className = 'tatil-aciklama-hucre';
             tatilAciklamaDiv.textContent = haftaData.label || "Tatil";
             haftaDiv.appendChild(tatilAciklamaDiv);
-            const emptyEditCell = document.createElement('div'); haftaDiv.appendChild(emptyEditCell);
+            // Tatil satırları için boş düzenleme hücresi de kaldırıldı, çünkü başlıkta artık "Düzenle" sütunu yok.
+            // const emptyEditCell = document.createElement('div'); haftaDiv.appendChild(emptyEditCell);
         }
         container.appendChild(haftaDiv);
     });
@@ -1488,6 +1502,16 @@ document.addEventListener('DOMContentLoaded', async function() {
     loadSavedPlans(); 
     document.getElementById('baslangicHaftasi').addEventListener('change', updateAllWeekDates);
     document.getElementById('dersSaati').addEventListener('change', updateDersSaati);
+
+    // Yıllık plan başlığını temel bilgilerdeki değişikliklere göre güncelle
+    ['okul', 'egitimOgretimYili', 'ders', 'sinif'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('change', updateYillikPlanBasligi);
+            element.addEventListener('keyup', updateYillikPlanBasligi); // inputlar için
+        }
+    });
+
     document.getElementById('planForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const generateBtn = document.getElementById('generateBtn');
