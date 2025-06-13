@@ -545,24 +545,43 @@ app.post('/generate-plan', async (req, res) => {
     // Dersi veren öğretmeni her zaman ilk ekle
     signatureCells.push(new TableCell({
         children: [
-            new Paragraph({ children: [new TextRun({ text: ogretmen, bold: true, size: 22 })], alignment: AlignmentType.CENTER }),
-            new Paragraph({ children: [new TextRun({ text: "Öğretmen", size: 20 })], alignment: AlignmentType.CENTER }),
-            new Paragraph({ text: "\n\nİmza", alignment: AlignmentType.CENTER }),
+            new Paragraph({ children: [new TextRun({ text: ogretmen, bold: false, size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }), // Bold kaldırıldı, font ve size güncellendi
+            new Paragraph({ children: [new TextRun({ text: "Öğretmen", bold: true, size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }), // Bold eklendi, font ve size güncellendi
+            new Paragraph({ children: [new TextRun({ text: "\n\nİmza", size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }), // Font ve size güncellendi
         ],
     }));
 
-
+    // Ek öğretmenler için imza alanları (additionalTeachers)
+    if (additionalTeachers && Array.isArray(additionalTeachers)) {
+        additionalTeachers.forEach(ekOgretmen => {
+            if (ekOgretmen.adSoyad && ekOgretmen.unvan) {
+                signatureCells.push(new TableCell({
+                    children: [
+                        new Paragraph({ children: [new TextRun({ text: ekOgretmen.adSoyad, bold: false, size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }),
+                        new Paragraph({ children: [new TextRun({ text: ekOgretmen.unvan, bold: true, size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }),
+                        new Paragraph({ children: [new TextRun({ text: "\n\nİmza", size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }),
+                    ],
+                }));
+            }
+        });
+    }
     
-    
+    // İmza satırlarını oluştur
+    const signatureRows = [];
+    const cellsPerRow = 3; // Her satırda kaç imza alanı olacağı (isteğe bağlı olarak değiştirilebilir)
+    for (let i = 0; i < signatureCells.length; i += cellsPerRow) {
+        signatureRows.push(new TableRow({ children: signatureCells.slice(i, i + cellsPerRow) }));
+    }
 
+    // Corrected: Removed duplicated "const doc = new Document({"
     const doc = new Document({
         creator: "Yillik Plan Oluşturucu",
         description: "Otomatik oluşturulmuş yıllık plan",
         styles: {
             paragraphStyles: [
-                { id: "Normal", name: "Normal", run: { size: 22, font: "Calibri" }, paragraph: { spacing: { before: 0, after: 100 } } },
-                { id: "strong", name: "Strong", basedOn: "Normal", run: { bold: true } },
-                { id: "tableHeader", name: "Table Header", basedOn: "Normal", run: { bold: true, size: 20 }, paragraph: { alignment: AlignmentType.CENTER } }
+                { id: "Normal", name: "Normal", run: { size: 20, font: "Times New Roman" }, paragraph: { spacing: { before: 0, after: 100 } } },
+                { id: "strong", name: "Strong", basedOn: "Normal", run: { bold: true, font: "Times New Roman" } }, // Font eklendi
+                { id: "tableHeader", name: "Table Header", basedOn: "Normal", run: { bold: true, size: 20, font: "Times New Roman" }, paragraph: { alignment: AlignmentType.CENTER } } // Font eklendi
             ]
         },
         sections: [{
@@ -572,8 +591,18 @@ app.post('/generate-plan', async (req, res) => {
                 },
             },
             children: [
-                new Paragraph({ children: [new TextRun({ text: "T.C. MİLLÎ EĞİTİM BAKANLIĞI", bold: true, size: 24 })], alignment: AlignmentType.CENTER }),
-                new Paragraph({ children: [new TextRun({ text: "ÜNİTELENDİRİLMİŞ YILLIK PLAN", bold: true, size: 20 })], alignment: AlignmentType.CENTER, spacing: { after: 400 } }),
+                new Paragraph({ 
+                    children: [
+                        new TextRun({ 
+                            text: `T.C. MİLLİ EĞİTİM BAKANLIĞI ${okul.toUpperCase()} ${egitimOgretimYili} EĞİTİM ÖĞRETİM YILI ${ders.toUpperCase()} ${sinif.toUpperCase()} DERSİ ÜNİTELENDİRİLMİŞ YILLIK PLANI`, 
+                            bold: true, 
+                            size: 24, // 12pt
+                            font: "Times New Roman" 
+                        })
+                    ], 
+                    alignment: AlignmentType.CENTER, 
+                    spacing: { after: 400 } 
+                }),
                 new Table({
                     width: { size: 100, type: WidthType.PERCENTAGE },
                     rows: [

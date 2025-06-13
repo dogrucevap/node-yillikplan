@@ -1110,3 +1110,40 @@ body.dragging-active, body.dragging-active * {
 
 
 /* Bitiş: Sidebar Stilleri */
+
+/* Plan İmzaları Stilleri */
+.plan-imzalari-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* En fazla 9 sütun, esnek genişlik */
+    gap: 20px;
+    margin-top: 30px;
+    padding: 20px 0;
+    border-top: 1px solid #eee;
+    align-items: start; /* İçerikleri yukarıya hizala */
+}
+
+.plan-imzalari-container .imza-alani {
+    text-align: center;
+    /* width kaldırıldı, grid-template-columns yönetecek */
+}
+/* .plan-imzalari-container .imza-alani.mudur-imza-alani { ... } artık gereksiz */
+
+
+.plan-imzalari-container .imza-alani p {
+    margin-bottom: 5px;
+    font-size: 14px;
+    color: #333;
+}
+
+.plan-imzalari-container .imza-alani .unvan {
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 20px; /* İmza çizgisi için boşluk */
+}
+
+.plan-imzalari-container .imza-alani .imza-cizgisi {
+    width: 80%;
+    margin: 0 auto;
+    border-bottom: 1px solid #777;
+    height: 1px;
+}
