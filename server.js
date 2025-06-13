@@ -678,7 +678,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 const baseUrl = isProduction ? 'https://node-yillikplan-1074807643813.europe-west3.run.app' : `http://localhost:${PORT}`; // PORT değişkenini kullan
 console.log(`Environment: ${isProduction ? 'Cloud Run' : 'Local'}`);
 
-app.listen(PORT, 'localhost', () => { // PORT değişkenini ve 'localhost'u kullan
+app.listen(PORT, '0.0.0.0', () => { // PORT değişkenini ve tüm arayüzleri kullan
   console.log(`Server running on port ${PORT}`);
   console.log(`Base URL: ${baseUrl}`);
 });
