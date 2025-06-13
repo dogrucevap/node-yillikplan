@@ -1,9 +1,13 @@
+require('dotenv').config(); // Ortam değişkenlerini .env dosyasından yükle
 const express = require('express');
 const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, AlignmentType, TextRun, ShadingType, Borders } = require('docx');
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
+const session = require('express-session');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const app = express();
 const PORT = process.env.PORT || 8080; // Portu ortam değişkeninden veya varsayılan olarak 8080 al
@@ -37,7 +41,6 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
           if (err) console.error("Plans tablosu oluşturma hatası:", err.message);
       });
 
-      // Diğer tablolar... (değişiklik yok)
       db.run(`CREATE TABLE IF NOT EXISTS academic_weeks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         plan_id INTEGER,
@@ -89,7 +92,6 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
       )`, (err) => {
         if (err) console.error("Ogretmenler tablosu oluşturma hatası:", err.message);
         else {
-          // Demo verileri ogretmenler tablosu oluşturulduktan sonra eklenmeli
           insertDemoDataIfNeeded();
         }
       });
@@ -103,31 +105,20 @@ function insertDemoDataIfNeeded() {
     if (err) { return; }
     try {
       const demoData = JSON.parse(jsonData);
-
-      // Demo öğretmenleri ekle
       const insertOgretmenStmt = db.prepare("INSERT OR IGNORE INTO ogretmenler (ad_soyad, unvan) VALUES (?, ?)");
       if (demoData.ogretmen) {
         insertOgretmenStmt.run(demoData.ogretmen, "Öğretmen");
       }
-      // Demo verisinde okul müdürü için ayrı bir alan yok, ancak additionalTeachers içinde olabilir.
-      // Şimdilik sadece ana öğretmeni ekliyoruz. Eğer demo-data.json'da müdür bilgisi varsa, o da eklenebilir.
-      // Örneğin, demo-data.json'a bir "okulMudur" alanı eklenebilir.
-      // Veya additionalTeachers'dan "Okul Müdürü" unvanlı biri varsa o eklenebilir.
-      // Şu anki demo-data.json yapısında bu bilgi yok, bu yüzden sadece öğretmeni ekliyoruz.
-      // Eğer ileride demo-data.json'a müdür eklenirse, burası güncellenmeli.
-      // Örnek: demoData.okulMudur için: insertOgretmenStmt.run(demoData.okulMudur, "Müdür");
       insertOgretmenStmt.finalize((err) => {
         if (err) console.error("Demo öğretmenleri ekleme hatası (finalize):", err.message);
       });
 
-
-      // Demo öğretmenleri ekledikten sonra planları ekle
       db.get("SELECT id FROM plans WHERE plan_name = ?", ["demo_matematik_9"], (err, row) => {
         if (err) {
             console.error("Demo plan kontrol hatası:", err.message);
             return;
         }
-        if (row) return; // Plan zaten var, tekrar ekleme
+        if (row) return; 
 
         db.serialize(() => {
             const demoBaseAcademicPlan = demoData.haftalikPlan.map((week, index) => ({
@@ -135,61 +126,39 @@ function insertDemoDataIfNeeded() {
                 dersSaati: week.dersSaati || demoData.dersSaati || '4', aracGerec: week.aracGerec || [],
                 yontemTeknik: week.yontemTeknik || [], olcmeDeğerlendirme: week.olcmeDeğerlendirme || '', aciklama: week.aciklama || ''
             }));
-
-            // Demo için tam yillikPlan oluştur (tatiller dahil)
             const demoFullYillikPlan = [];
             let demoAcademicPlanIndex = 0;
-            const TATIL_DONEMLERI_SERVER = { // İstemcidekiyle aynı olmalı
+            const TATIL_DONEMLERI_SERVER = { 
                 ARA_TATIL_1: { duration: 1, afterAcademicWeek: 9, label: "1. Ara Tatil" },
                 YARIYIL_TATILI: { duration: 2, afterAcademicWeek: 18, label: "Yarıyıl Tatili" },
                 ARA_TATIL_2: { duration: 1, afterAcademicWeek: 27, label: "2. Ara Tatil" }
             };
-
             while(demoAcademicPlanIndex < demoBaseAcademicPlan.length) {
                 for (const holidayKey in TATIL_DONEMLERI_SERVER) {
                     if (TATIL_DONEMLERI_SERVER[holidayKey].afterAcademicWeek === demoAcademicPlanIndex) {
                  const holiday = TATIL_DONEMLERI_SERVER[holidayKey];
-                 // Demo veri için tarih aralığı hesaplamıyoruz, sadece label ve duration yeterli olabilir
-                 // Ya da istemcideki formatDateRange benzeri bir fonksiyon sunucuda da olmalı.
-                 // Şimdilik, istemcinin yüklerken bu tarihleri doğru hesaplayacağını varsayarak
-                 // tarih alanını boş bırakabilir veya sadece label ve duration ile kaydedebiliriz.
-                 // Word çıktısı için tarih önemli olduğundan, demo verisi için de bu bilgiyi oluşturmak iyi olur.
-                 // Ancak, demo verisi için başlangıç haftası belli olmadığından, tam tarih aralığı burada hesaplanamaz.
-                 // Bu nedenle, demo planı yüklendiğinde istemci tarafı bu tarihleri dolduracaktır.
-                 // Word'e yazarken de `haftaData.tarih` kullanılır.
-                 demoFullYillikPlan.push({ 
-                    type: 'holiday', 
-                    label: holiday.label, 
-                    duration: holiday.duration, 
-                    tarih: `(${holiday.duration} Hafta)` // Geçici bir gösterim, istemci bunu güncelleyecek
-                });
+                 demoFullYillikPlan.push({ type: 'holiday', label: holiday.label, duration: holiday.duration, tarih: `(${holiday.duration} Hafta)` });
                  break; 
             }
         }
         const academicWeekData = demoBaseAcademicPlan[demoAcademicPlanIndex];
-        demoFullYillikPlan.push({ ...academicWeekData, type: 'academic', tarih: '' }); // Tarih istemci tarafından hesaplanacak
+        demoFullYillikPlan.push({ ...academicWeekData, type: 'academic', tarih: '' }); 
         demoAcademicPlanIndex++;
     }
     for (const holidayKey in TATIL_DONEMLERI_SERVER) {
         if (TATIL_DONEMLERI_SERVER[holidayKey].afterAcademicWeek === demoBaseAcademicPlan.length) {
              const holiday = TATIL_DONEMLERI_SERVER[holidayKey];
-             demoFullYillikPlan.push({ 
-                type: 'holiday', 
-                label: holiday.label, 
-                duration: holiday.duration,
-                tarih: `(${holiday.duration} Hafta)` 
-            });
+             demoFullYillikPlan.push({ type: 'holiday', label: holiday.label, duration: holiday.duration, tarih: `(${holiday.duration} Hafta)` });
              break;
         }
     }
-
     const stmtPlan = db.prepare("INSERT INTO plans (plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, varsayilan_arac_gerec, base_academic_plan_json, plan_data_json, additional_teachers_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             stmtPlan.run("demo_matematik_9", demoData.okul, demoData.ogretmen, demoData.ders, demoData.sinif,
               demoData.egitimOgretimYili, demoData.dersSaati,
               JSON.stringify(demoData.varsayilanAracGerec),
               JSON.stringify(demoBaseAcademicPlan),
-              JSON.stringify(demoFullYillikPlan), // Oluşturulan tam planı kaydet
-              JSON.stringify(demoData.additionalTeachers || [])); // Demo additionalTeachers varsa ekle
+              JSON.stringify(demoFullYillikPlan), 
+              JSON.stringify(demoData.additionalTeachers || [])); 
             stmtPlan.finalize();
         });
       });
@@ -200,23 +169,133 @@ function insertDemoDataIfNeeded() {
 app.use(cors());
 app.use(express.json({limit: '5mb'}));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+
+// Session ve Passport Başlangıcı
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your_very_secret_key_12345', 
+  resave: false,
+  saveUninitialized: false, 
+  cookie: { secure: process.env.NODE_ENV === 'production' } 
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Google OAuth 2.0 Stratejisi
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID, 
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET, 
+    callbackURL: "/auth/google/callback" 
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    const userName = profile.displayName;
+    if (userName) {
+      db.get("SELECT id, ad_soyad, unvan FROM ogretmenler WHERE ad_soyad = ?", [userName], (err, row) => {
+        if (err) {
+          console.error("Google Auth - Öğretmen kontrol hatası:", err.message);
+          return cb(err, profile); 
+        }
+        if (!row) {
+          const stmt = db.prepare("INSERT INTO ogretmenler (ad_soyad, unvan) VALUES (?, ?)");
+          stmt.run(userName, "Öğretmen", function(insertErr) {
+            if (insertErr) {
+              console.error("Google Auth - Yeni öğretmen ekleme hatası:", insertErr.message);
+              return cb(null, profile);
+            } else {
+              console.log(`Google Auth ile yeni öğretmen eklendi: ${userName}, ID: ${this.lastID}`);
+              return cb(null, profile);
+            }
+          });
+          stmt.finalize(); 
+        } else {
+          console.log(`Google Auth - Öğretmen zaten mevcut: ${userName}`);
+          return cb(null, profile); 
+        }
+      });
+    } else {
+      console.warn("Google Auth - Profilde displayName bulunamadı.");
+      return cb(null, profile); 
+    }
+  }
+));
+
+passport.serializeUser(function(user, cb) {
+  process.nextTick(function() {
+    cb(null, { id: user.id, displayName: user.displayName, emails: user.emails, photos: user.photos });
+  });
+});
+
+passport.deserializeUser(function(user, cb) {
+  process.nextTick(function() {
+    return cb(null, user);
+  });
+});
+
+// Statik dosyalar ve ana rota (Passport başlatıldıktan SONRA olmalı)
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+app.get('/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/login-failed.html' }), 
+  function(req, res) {
+    res.redirect('/');
+  });
+
+app.get('/api/auth/status', (req, res) => {
+  if (req.isAuthenticated()) {
+    res.json({
+      isAuthenticated: true,
+      user: {
+        displayName: req.user.displayName,
+        email: req.user.emails && req.user.emails.length > 0 ? req.user.emails[0].value : null,
+        photo: req.user.photos && req.user.photos.length > 0 ? req.user.photos[0].value : null
+      }
+    });
+  } else {
+    res.json({ isAuthenticated: false });
+  }
+});
+
+app.get('/auth/logout', (req, res, next) => {
+  req.logout(function(err) {
+    if (err) { return next(err); }
+    req.session.destroy((err) => { 
+        if (err) {
+            console.error("Oturum sonlandırma hatası:", err);
+            return res.status(500).send("Çıkış yapılamadı.");
+        }
+        res.clearCookie('connect.sid'); 
+        res.redirect('/'); 
+    });
+  });
+});
+
+function ensureAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ error: "Yetkisiz erişim. Lütfen giriş yapın." });
+}
+
+// API Rotaları (ensureAuthenticated ile korunabilir)
+app.get('/api/profile', ensureAuthenticated, (req, res) => {
+  res.json({ message: "Bu korumalı bir rota!", user: req.user });
+});
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.get('/demo-data', async (req, res) => {
-    // Bu endpoint'te değişiklik yok
     try {
         const planRow = await new Promise((resolve, reject) => {
           db.get("SELECT * FROM plans WHERE plan_name = ?", ["demo_matematik_9"], (err, row) => {
             if (err) reject(err); else resolve(row);
           });
         });
-
         if (!planRow) return res.status(404).json({ error: 'Demo plan bulunamadı' });
-
         const basePlan = JSON.parse(planRow.base_academic_plan_json || "[]");
         const demoPlanData = {
           okul: planRow.okul, ogretmen: planRow.ogretmen, ders: planRow.ders, sinif: planRow.sinif,
@@ -258,16 +337,12 @@ app.get('/api/plans/:id', (req, res) => {
 
 app.post('/api/plans', (req, res) => {
     const { plan_id, plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, varsayilan_arac_gerec, plan_data_json, base_academic_plan_json, additional_teachers } = req.body;
-
     if (!plan_name) return res.status(400).json({ error: "Plan adı gereklidir." });
-
     const sVarsayilanAracGerec = JSON.stringify(varsayilan_arac_gerec || []);
     const sPlanDataJson = JSON.stringify(plan_data_json || null);
     const sBaseAcademicPlanJson = JSON.stringify(base_academic_plan_json || null);
     const sAdditionalTeachersJson = JSON.stringify(additional_teachers || []);
-
     if (plan_id) {
-        // Var olan planı güncelle
         const stmt = db.prepare(`UPDATE plans SET 
             plan_name = ?, okul = ?, ogretmen = ?, ders = ?, sinif = ?, 
             egitim_ogretim_yili = ?, ders_saati = ?, varsayilan_arac_gerec = ?, 
@@ -293,7 +368,6 @@ app.post('/api/plans', (req, res) => {
         );
         stmt.finalize();
     } else {
-        // Yeni plan ekle
         const stmt = db.prepare("INSERT INTO plans (plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, varsayilan_arac_gerec, plan_data_json, base_academic_plan_json, additional_teachers_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         stmt.run(
             plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati,
@@ -322,7 +396,6 @@ app.delete('/api/plans/:id', (req, res) => {
     });
 });
 
-// Yeni Araç-Gereç Tipi Ekleme Endpoint'i
 app.post('/api/arac-gerec-tipleri', (req, res) => {
     const { name } = req.body;
     if (!name || typeof name !== 'string' || name.trim() === '') {
@@ -336,13 +409,11 @@ app.post('/api/arac-gerec-tipleri', (req, res) => {
             return res.status(500).json({ error: "Araç-gereç tipi eklenirken bir sunucu hatası oluştu." });
         }
         if (this.changes > 0) {
-            // Yeni eklendi, ID'yi alıp tüm listeyi geri döndürebiliriz veya sadece başarı mesajı
             db.get("SELECT id, name FROM arac_gerec_tipleri WHERE name = ?", [trimmedName], (err, row) => {
                 if (err || !row) return res.status(201).json({ message: `"${trimmedName}" başarıyla eklendi.`, name: trimmedName });
                 res.status(201).json({ message: `"${trimmedName}" başarıyla eklendi.`, id: row.id, name: row.name });
             });
         } else {
-            // Zaten vardı, değişiklik olmadı
              db.get("SELECT id, name FROM arac_gerec_tipleri WHERE name = ?", [trimmedName], (err, row) => {
                 if (err || !row) return res.status(200).json({ message: `"${trimmedName}" zaten mevcut.`, name: trimmedName });
                 res.status(200).json({ message: `"${trimmedName}" zaten mevcut.`, id: row.id, name: row.name });
@@ -352,30 +423,21 @@ app.post('/api/arac-gerec-tipleri', (req, res) => {
     stmt.finalize();
 });
 
-// Tüm Araç-Gereç Tiplerini Listeleme Endpoint'i
 app.get('/api/arac-gerec-tipleri', (req, res) => {
     db.all("SELECT name FROM arac_gerec_tipleri ORDER BY name ASC", [], (err, rows) => {
         if (err) {
             console.error("Araç-gereç tipleri listeleme hatası:", err.message);
             return res.status(500).json({ error: "Araç-gereç tipleri listelenirken bir sunucu hatası oluştu." });
         }
-        res.json(rows.map(row => row.name)); // Sadece isimleri içeren bir dizi döndür
+        res.json(rows.map(row => row.name)); 
     });
 });
 
-// Araç-Gereç Tipini Silme Endpoint'i
 app.delete('/api/arac-gerec-tipleri/:name', (req, res) => {
     const nameToDelete = req.params.name;
     if (!nameToDelete) {
         return res.status(400).json({ error: "Silinecek araç-gereç adı gereklidir." });
     }
-
-    // Önce bu araç-gerecin herhangi bir plan tarafından kullanılıp kullanılmadığını kontrol edebiliriz.
-    // Şimdilik, doğrudan sileceğiz. Eğer ilişkili kayıtlar varsa, SQLite ON DELETE CASCADE bunu halledebilir
-    // ya da manuel olarak plan_hafta_arac_gerec tablosundan da silmek gerekebilir.
-    // Basitlik adına, şimdilik sadece arac_gerec_tipleri tablosundan siliyoruz.
-    // Daha gelişmiş bir senaryoda, bu araç-gerecin kullanıldığı planlar varsa kullanıcı uyarılmalı veya silme engellenmeli.
-
     db.run("DELETE FROM arac_gerec_tipleri WHERE name = ?", [nameToDelete], function(err) {
         if (err) {
             console.error("Araç-gereç tipi silme hatası:", err.message);
@@ -389,7 +451,6 @@ app.delete('/api/arac-gerec-tipleri/:name', (req, res) => {
     });
 });
 
-// Yöntem ve Teknik Tipleri için API Endpoint'leri
 app.get('/api/yontem-teknik-tipleri', (req, res) => {
     db.all("SELECT name FROM yontem_teknik_tipleri ORDER BY name ASC", [], (err, rows) => {
         if (err) {
@@ -435,7 +496,6 @@ app.delete('/api/yontem-teknik-tipleri/:name', (req, res) => {
     });
 });
 
-// Öğretmenler API Endpoint'leri
 app.get('/api/ogretmenler', (req, res) => {
     db.all("SELECT id, ad_soyad, unvan FROM ogretmenler ORDER BY ad_soyad ASC", [], (err, rows) => {
         if (err) {
@@ -454,7 +514,6 @@ app.post('/api/ogretmenler', (req, res) => {
     }
     const trimmedAdSoyad = ad_soyad.trim();
     const trimmedUnvan = unvan.trim();
-
     const stmt = db.prepare("INSERT INTO ogretmenler (ad_soyad, unvan) VALUES (?, ?)");
     stmt.run(trimmedAdSoyad, trimmedUnvan, function(err) {
         if (err) {
@@ -474,7 +533,6 @@ app.delete('/api/ogretmenler/:id', (req, res) => {
     if (!ogretmenId || isNaN(parseInt(ogretmenId))) {
         return res.status(400).json({ error: "Geçerli bir öğretmen ID'si gereklidir." });
     }
-    // İleride bu öğretmenin herhangi bir planda kullanılıp kullanılmadığı kontrol edilebilir.
     db.run("DELETE FROM ogretmenler WHERE id = ?", [ogretmenId], function(err) {
         if (err) {
             console.error("Öğretmen silme hatası:", err.message);
@@ -488,11 +546,9 @@ app.delete('/api/ogretmenler/:id', (req, res) => {
     });
 });
 
-
 app.post('/generate-plan', async (req, res) => {
   try {
     const { okul, ogretmen, ders, sinif, egitimOgretimYili, dersSaati, haftalikPlan, additionalTeachers } = req.body;
-
     const tableHeader = new TableRow({
         children: [
             new TableCell({ children: [new Paragraph({ text: "Hafta", alignment: AlignmentType.CENTER })], verticalAlign: "center" }),
@@ -507,7 +563,6 @@ app.post('/generate-plan', async (req, res) => {
         tableHeader: true,
     });
     const tableRows = [tableHeader];
-
     haftalikPlan.forEach(haftaData => {
         if (haftaData.type === 'holiday') {
             const labelText = haftaData.tarih ? `${haftaData.label} (${haftaData.tarih})` : haftaData.label;
@@ -515,7 +570,7 @@ app.post('/generate-plan', async (req, res) => {
                 children: [
                     new TableCell({
                         children: [new Paragraph({ text: labelText, alignment: AlignmentType.CENTER, style: "strong" })],
-                        columnSpan: 8, // Tüm sütunları kapla
+                        columnSpan: 8, 
                         shading: { type: ShadingType.SOLID, color: "D3D3D3", fill: "D3D3D3" },
                         verticalAlign: "center"
                     }),
@@ -524,7 +579,6 @@ app.post('/generate-plan', async (req, res) => {
         } else {
             const aracGerecText = Array.isArray(haftaData.aracGerec) ? haftaData.aracGerec.join(', ') : (haftaData.aracGerec || '');
             const yontemTeknikText = Array.isArray(haftaData.yontemTeknik) ? haftaData.yontemTeknik.join(', ') : (haftaData.yontemTeknik || '');
-
             tableRows.push(new TableRow({
                 children: [
                     new TableCell({ children: [new Paragraph({ text: String(haftaData.originalAcademicWeek || ''), alignment: AlignmentType.CENTER })] }),
@@ -539,19 +593,14 @@ app.post('/generate-plan', async (req, res) => {
             }));
         }
     });
-
-    // --- İMZA ALANI OLUŞTURMA (DÖNGÜNÜN DIŞINDA) ---
     const signatureCells = [];
-    // Dersi veren öğretmeni her zaman ilk ekle
     signatureCells.push(new TableCell({
         children: [
-            new Paragraph({ children: [new TextRun({ text: ogretmen, bold: false, size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }), // Bold kaldırıldı, font ve size güncellendi
-            new Paragraph({ children: [new TextRun({ text: "Öğretmen", bold: true, size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }), // Bold eklendi, font ve size güncellendi
-            new Paragraph({ children: [new TextRun({ text: "\n\nİmza", size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }), // Font ve size güncellendi
+            new Paragraph({ children: [new TextRun({ text: ogretmen, bold: false, size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }), 
+            new Paragraph({ children: [new TextRun({ text: "Öğretmen", bold: true, size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }), 
+            new Paragraph({ children: [new TextRun({ text: "\n\nİmza", size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }), 
         ],
     }));
-
-    // Ek öğretmenler için imza alanları (additionalTeachers)
     if (additionalTeachers && Array.isArray(additionalTeachers)) {
         additionalTeachers.forEach(ekOgretmen => {
             if (ekOgretmen.adSoyad && ekOgretmen.unvan) {
@@ -565,29 +614,25 @@ app.post('/generate-plan', async (req, res) => {
             }
         });
     }
-    
-    // İmza satırlarını oluştur
     const signatureRows = [];
-    const cellsPerRow = 3; // Her satırda kaç imza alanı olacağı (isteğe bağlı olarak değiştirilebilir)
+    const cellsPerRow = 3; 
     for (let i = 0; i < signatureCells.length; i += cellsPerRow) {
         signatureRows.push(new TableRow({ children: signatureCells.slice(i, i + cellsPerRow) }));
     }
-
-    // Corrected: Removed duplicated "const doc = new Document({"
     const doc = new Document({
         creator: "Yillik Plan Oluşturucu",
         description: "Otomatik oluşturulmuş yıllık plan",
         styles: {
             paragraphStyles: [
                 { id: "Normal", name: "Normal", run: { size: 20, font: "Times New Roman" }, paragraph: { spacing: { before: 0, after: 100 } } },
-                { id: "strong", name: "Strong", basedOn: "Normal", run: { bold: true, font: "Times New Roman" } }, // Font eklendi
-                { id: "tableHeader", name: "Table Header", basedOn: "Normal", run: { bold: true, size: 20, font: "Times New Roman" }, paragraph: { alignment: AlignmentType.CENTER } } // Font eklendi
+                { id: "strong", name: "Strong", basedOn: "Normal", run: { bold: true, font: "Times New Roman" } }, 
+                { id: "tableHeader", name: "Table Header", basedOn: "Normal", run: { bold: true, size: 20, font: "Times New Roman" }, paragraph: { alignment: AlignmentType.CENTER } } 
             ]
         },
         sections: [{
             properties: {
                  page: {
-                    margin: { top: 1440, right: 1080, bottom: 1440, left: 1080 }, // 2.5cm top/bottom, 1.875cm left/right (approx)
+                    margin: { top: 1440, right: 1080, bottom: 1440, left: 1080 }, 
                 },
             },
             children: [
@@ -596,7 +641,7 @@ app.post('/generate-plan', async (req, res) => {
                         new TextRun({ 
                             text: `T.C. MİLLİ EĞİTİM BAKANLIĞI ${okul.toUpperCase()} ${egitimOgretimYili} EĞİTİM ÖĞRETİM YILI ${ders.toUpperCase()} ${sinif.toUpperCase()} DERSİ ÜNİTELENDİRİLMİŞ YILLIK PLANI`, 
                             bold: true, 
-                            size: 24, // 12pt
+                            size: 24, 
                             font: "Times New Roman" 
                         })
                     ], 
@@ -643,13 +688,11 @@ app.post('/generate-plan', async (req, res) => {
                             ],
                         }),
                     ],
-                    columnWidths: [2500, 7500], // Örnek sütun genişlikleri
+                    columnWidths: [2500, 7500], 
                 }),
                 new Paragraph({ text: "", spacing: { after: 200 } }),
                 new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: tableRows }),
                 new Paragraph({ text: "", spacing: { after: 800 } }),
-
-                // YENİ İMZA BÖLÜMÜ
                 new Table({
                     rows: signatureRows,
                     width: { size: 100, type: WidthType.PERCENTAGE },
@@ -658,16 +701,13 @@ app.post('/generate-plan', async (req, res) => {
             ],
         }],
     });
-
     const buffer = await Packer.toBuffer(doc);
     const safeDers = ders.replace(/[^a-zA-Z0-9]/g, '_');
     const safeSinif = sinif.replace(/[^a-zA-Z0-9]/g, '_');
     const fileName = `yillik_plan_${safeDers}_${safeSinif}_${Date.now()}.docx`;
-
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
     res.send(buffer);
-
   } catch (error) {
     console.error('Hata:', error);
     res.status(500).json({ message: 'Belge oluşturulurken bir sunucu hatası oluştu.', error: error.message });
@@ -675,14 +715,12 @@ app.post('/generate-plan', async (req, res) => {
 });
 
 const isProduction = process.env.NODE_ENV === 'production';
-const baseUrl = isProduction ? 'https://node-yillikplan-1074807643813.europe-west3.run.app' : `http://localhost:${PORT}`; // PORT değişkenini kullan
+const baseUrl = isProduction ? 'https://node-yillikplan-1074807643813.europe-west3.run.app' : `http://localhost:${PORT}`; 
 console.log(`Environment: ${isProduction ? 'Cloud Run' : 'Local'}`);
 
-app.listen(PORT, '0.0.0.0', () => { // PORT değişkenini ve tüm arayüzleri kullan
+app.listen(PORT, '0.0.0.0', () => { 
   console.log(`Server running on port ${PORT}`);
   console.log(`Base URL: ${baseUrl}`);
 });
-
-// NOT: Cloud Run veya benzeri ortamlarda uygulamanın doğru çalışması için 0.0.0.0 adresini dinlemesi önemlidir.
 
 module.exports = app;
