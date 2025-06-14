@@ -5,20 +5,23 @@
 }
 
 body {
-    font-family: 'Roboto', sans-serif; /* Değiştirildi */
-    font-size: 18px; /* Eklendi */
+    font-family: 'Roboto', sans-serif; 
+    font-size: 18px; 
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
-    padding: 20px;
+    padding: 20px; 
+    overflow-x: hidden; 
+    position: relative; 
+    transition: padding-left 0.3s ease-in-out; /* Daha hızlı geçiş */
 }
 
 .container {
     max-width: 1400px;
     margin: 0 auto;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-    overflow: hidden;
+    background: #ffffff; /* Saf beyaz */
+    border-radius: 8px; /* Biraz daha az yuvarlak */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08); /* Daha yumuşak gölge */
+    position: relative; 
 }
 
 .header {
@@ -40,7 +43,19 @@ body {
 
 .form-container {
     padding: 40px;
+    /* transition: margin-right 0.5s ease-in-out, transform 0.5s ease-in-out; */ /* .container'a taşındı */
+    position: relative; 
+    width: 100%; 
 }
+
+/* Yan menü açıkken .container'ı ittir (Bu yöntem yerine body padding kullanılacak) */
+/* body.sidebar-active .container { transform: translateX(-300px); } */
+
+/* body'e padding ekleyerek itme (sol menü için) */
+body.sidebar-active {
+    padding-left: 300px; /* Sidebar genişliği kadar. Body'nin kendi padding'i zaten var. */
+}
+
 
 .section {
     margin-bottom: 40px;
@@ -662,27 +677,28 @@ body.dragging-active, body.dragging-active * {
 /* Floating Settings Button */
 .floating-settings-btn {
     position: fixed;
-    top: 20px;
-    right: 20px;
-    background-color: #2c3e50;
-    color: white;
-    border: none;
+    top: 15px; /* Biraz yukarı */
+    left: 15px; 
+    background-color: #ffffff; /* Beyaz arka plan */
+    color: #2c3e50; /* Koyu ikon rengi */
+    border: 1px solid #e0e0e0; /* Hafif kenarlık */
     border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    font-size: 20px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    width: 44px; /* Biraz daha küçük */
+    height: 44px;
+    font-size: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     cursor: pointer;
-    z-index: 1050;
+    z-index: 1150; /* Sidebar'ın üzerinde olmalı */
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.3s, transform 0.3s;
+    transition: all 0.3s;
 }
 
 .floating-settings-btn:hover {
-    background-color: #34495e;
-    transform: scale(1.1);
+    background-color: #f8f9fa;
+    transform: scale(1.05);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }
 
 .floating-settings-btn .fa-cog {
@@ -694,32 +710,23 @@ body.dragging-active, body.dragging-active * {
 /* Sidebar Styles */
 .sidebar {
     height: 100%;
-    width: 0; /* Başlangıçta kapalı */
+    width: 0; 
     position: fixed;
     z-index: 1100;
     top: 0;
-    right: 0;
-    background-color: #f8f9fa;
+    left: 0; 
+    background-color: #ffffff; /* Ana içerikle aynı arka plan */
     overflow-x: hidden;
-    transition: 0.5s;
-    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
-    border-left: 1px solid #ddd;
+    transition: width 0.3s ease-in-out; /* Daha hızlı geçiş */
+    box-shadow: 2px 0 8px rgba(0,0,0,0.08); /* Daha yumuşak gölge */
+    border-right: 1px solid #eeeeee; /* Daha hafif kenarlık */
 }
 
 .sidebar.open {
-    width: 300px; /* Açık genişlik */
+    width: 300px; 
 }
 
-.sidebar h3 {
-    padding: 10px 15px;
-    font-size: 18px;
-    color: #2c3e50;
-    border-bottom: 1px solid #eee;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
+/* Sidebar h3 kaldırıldı, sidebar-header içindeki #sidebarTitle kullanılacak */
 
 .sidebar .close-btn {
     font-size: 30px;
@@ -748,24 +755,28 @@ body.dragging-active, body.dragging-active * {
 
 .item-button {
     flex-grow: 1;
-    padding: 10px;
+    padding: 10px 12px;
     font-size: 14px;
-    background-color: #f0f0f0;
-    color: #333;
-    border: 1px solid #ddd;
-    border-radius: 6px;
+    background-color: #ffffff;
+    color: #333333;
+    border: 1px solid #dddddd;
+    border-radius: 5px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background-color 0.2s, border-color 0.2s;
     text-align: left;
-    background-color: #f0f0f0; /* Gri arka plan */
-    color: #333; /* Koyu gri metin */
-    border: 1px solid #ccc; /* Gri kenarlık */
+}
+.item-button:hover {
+    background-color: #f9f9f9;
+    border-color: #cccccc;
 }
 
 .item-button.selected {
-    background-color: #7f8c8d; /* Seçili durumda daha koyu gri */
+    background-color: #3498db; 
     color: white;
-    border-color: #6c7a7b; /* Seçili durumda kenarlık */
+    border-color: #2980b9; 
+}
+.item-button.selected:hover {
+    background-color: #2c81ba;
 }
 
 .item-delete-btn {
@@ -819,18 +830,19 @@ body.dragging-active, body.dragging-active * {
 
 .sidebar-action-btn {
     width: 100%;
-    padding: 10px;
+    padding: 12px 15px; /* Biraz daha büyük */
     font-size: 14px;
-    background-color: #3498db;
+    font-weight: 500;
+    background-color: #2ecc71; /* Yeşil tema */
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.2s;
 }
 
 .sidebar-action-btn:hover {
-    background-color: #2980b9;
+    background-color: #27ae60; /* Yeşil tema hover */
 }
 
 .sidebar-action-btn:disabled {
@@ -842,17 +854,18 @@ body.dragging-active, body.dragging-active * {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 15px;
-    border-bottom: 1px solid #e0e0e0;
-    background-color: #e9ecef; /* Hafif bir başlık arka planı */
+    padding: 15px 20px; /* Biraz daha fazla padding */
+    border-bottom: 1px solid #eeeeee; /* Daha hafif kenarlık */
+    background-color: #ffffff; /* Ana içerikle aynı */
 }
 
 #sidebarTitle {
-    font-size: 18px;
-    font-weight: 600;
-    color: #2c3e50;
-    flex-grow: 1; /* Alanı doldurur */
-    text-align: center; /* Metni kendi alanında ortalar */
+    font-size: 17px; /* Biraz daha küçük */
+    font-weight: 500; /* Daha az kalın */
+    color: #333333; /* Koyu gri */
+    flex-grow: 1; 
+    text-align: left; /* Sola yaslı */
+    margin-left: 10px; /* Geri butonu varsa boşluk */
 }
 
 .sidebar-header .sidebar-back-btn { /* Global geri butonu için stil */
@@ -902,23 +915,29 @@ body.dragging-active, body.dragging-active * {
 }
 
 .sidebar-menu li a {
-    display: block;
-    padding: 15px 20px;
+    display: flex; /* İkon ve metni hizalamak için */
+    align-items: center;
+    padding: 12px 20px; /* Daha az dikey padding */
     text-decoration: none;
-    color: #34495e;
-    border-bottom: 1px solid #eee;
-    transition: background-color 0.2s, padding-left 0.2s;
-    font-size: 15px;
+    color: #444444; /* Biraz daha açık metin rengi */
+    border-bottom: 1px solid #f0f0f0; /* Çok hafif ayırıcı */
+    transition: background-color 0.2s, color 0.2s;
+    font-size: 14px; /* Biraz daha küçük font */
+    font-weight: 500;
 }
 .sidebar-menu li a i {
-    margin-right: 10px;
-    width: 20px; /* İkonlar için sabit genişlik */
+    margin-right: 12px; /* İkon ve metin arası boşluk */
+    width: 18px; 
     text-align: center;
+    color: #777777; /* İkon rengi */
 }
 
 .sidebar-menu li a:hover {
-    background-color: #e9ecef;
-    padding-left: 25px;
+    background-color: #f5f5f5; /* Hafif hover efekti */
+    color: #2c3e50; /* Hover'da metin rengi */
+}
+.sidebar-menu li a:hover i {
+    color: #3498db; /* Hover'da ikon rengi */
 }
 
 .ogretmen-item-button { /* Öğretmen listesindeki her bir satır için */
