@@ -390,7 +390,7 @@ app.get('/api/plans/:id', (req, res) => {
     });
 });
 
-app.post('/api/plans', (req, res) => {
+app.post('/api/plans', ensureAuthenticated, (req, res) => {
     const { plan_id, plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, varsayilan_arac_gerec, plan_data_json, base_academic_plan_json, additional_teachers } = req.body;
 
     if (!plan_name) return res.status(400).json({ error: "Plan adı gereklidir." });
@@ -445,7 +445,7 @@ app.post('/api/plans', (req, res) => {
     }
 });
 
-app.delete('/api/plans/:id', (req, res) => {
+app.delete('/api/plans/:id', ensureAuthenticated, (req, res) => {
     const planId = req.params.id;
     db.run("DELETE FROM plans WHERE id = ?", [planId], function(err) {
         if (err) return res.status(500).json({ error: "Plan silinirken bir hata oluştu." });
@@ -454,7 +454,7 @@ app.delete('/api/plans/:id', (req, res) => {
     });
 });
 
-app.post('/api/arac-gerec-tipleri', (req, res) => {
+app.post('/api/arac-gerec-tipleri', ensureAuthenticated, (req, res) => {
     const { name } = req.body;
     if (!name || typeof name !== 'string' || name.trim() === '') {
         return res.status(400).json({ error: "Araç-gereç adı gereklidir ve geçerli bir metin olmalıdır." });
@@ -491,7 +491,7 @@ app.get('/api/arac-gerec-tipleri', (req, res) => {
     });
 });
 
-app.delete('/api/arac-gerec-tipleri/:name', (req, res) => {
+app.delete('/api/arac-gerec-tipleri/:name', ensureAuthenticated, (req, res) => {
     const nameToDelete = req.params.name;
     if (!nameToDelete) {
         return res.status(400).json({ error: "Silinecek araç-gereç adı gereklidir." });
@@ -519,7 +519,7 @@ app.get('/api/yontem-teknik-tipleri', (req, res) => {
     });
 });
 
-app.post('/api/yontem-teknik-tipleri', (req, res) => {
+app.post('/api/yontem-teknik-tipleri', ensureAuthenticated, (req, res) => {
     const { name } = req.body;
     if (!name || typeof name !== 'string' || name.trim() === '') {
         return res.status(400).json({ error: "Yöntem/teknik adı gereklidir." });
@@ -536,7 +536,7 @@ app.post('/api/yontem-teknik-tipleri', (req, res) => {
     stmt.finalize();
 });
 
-app.delete('/api/yontem-teknik-tipleri/:name', (req, res) => {
+app.delete('/api/yontem-teknik-tipleri/:name', ensureAuthenticated, (req, res) => {
     const nameToDelete = req.params.name;
     if (!nameToDelete) {
         return res.status(400).json({ error: "Silinecek yöntem/teknik adı gereklidir." });
@@ -564,7 +564,7 @@ app.get('/api/ogretmenler', (req, res) => {
     });
 });
 
-app.post('/api/ogretmenler', (req, res) => {
+app.post('/api/ogretmenler', ensureAuthenticated, (req, res) => {
     const { ad_soyad, unvan } = req.body;
     if (!ad_soyad || typeof ad_soyad !== 'string' || ad_soyad.trim() === '' ||
         !unvan || typeof unvan !== 'string' || unvan.trim() === '') {
@@ -587,7 +587,7 @@ app.post('/api/ogretmenler', (req, res) => {
     stmt.finalize();
 });
 
-app.delete('/api/ogretmenler/:id', (req, res) => {
+app.delete('/api/ogretmenler/:id', ensureAuthenticated, (req, res) => {
     const ogretmenId = req.params.id;
     if (!ogretmenId || isNaN(parseInt(ogretmenId))) {
         return res.status(400).json({ error: "Geçerli bir öğretmen ID'si gereklidir." });
@@ -606,7 +606,7 @@ app.delete('/api/ogretmenler/:id', (req, res) => {
 });
 
 
-app.post('/generate-plan', async (req, res) => {
+app.post('/generate-plan', ensureAuthenticated, async (req, res) => {
   try {
     const { okul, ogretmen, ders, sinif, egitimOgretimYili, dersSaati, haftalikPlan, additionalTeachers } = req.body;
 
