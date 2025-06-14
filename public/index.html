@@ -22,7 +22,7 @@
                 <label for="currentPlanNameInput">Mevcut Plan Adı (Kaydetmek veya Güncellemek İçin):</label>
                 <div style="display: flex; gap: 10px; align-items: center;">
                     <input type="text" id="currentPlanNameInput" placeholder="Plan adı (boş bırakılırsa otomatik adlandırılır)" style="flex-grow: 1;">
-                    <button type="button" class="button" onclick="saveCurrentPlan()">Kaydet</button>
+                    <button type="button" class="ikon-kare-buton" onclick="saveCurrentPlan()"><i class="fas fa-save"></i></button>
                 </div>
                 <small style="display: block; margin-top: 5px; color: #555;">Var olan bir plan adını girerseniz, o plan güncellenir. Yeni bir ad girerseniz veya boş bırakırsanız yeni plan olarak kaydedilir.</small>
             </div>
@@ -38,7 +38,12 @@
         <div id="settingsSidebar" class="sidebar">
             <div class="sidebar-header">
                 <a href="#" class="sidebar-back-btn" id="sidebarGlobalBackBtn" data-view-target="mainMenuView" style="display: none;"><i class="fas fa-arrow-left"></i></a>
-                <span id="sidebarTitle">Ayarlar</span>
+                <div id="sidebarTitleContainer">
+                    <span id="sidebarMainTitle">Ayarlar</span>
+                    <div id="sidebarBreadcrumb" class="breadcrumb-trail">
+                        <!-- Breadcrumb items will be added here by JS -->
+                    </div>
+                </div>
                 <a href="javascript:void(0)" class="close-btn" id="closeSettingsSidebarBtn">&times;</a>
             </div>
             <div class="sidebar-content-wrapper">
@@ -65,36 +70,75 @@
                         <div class="form-group" style="padding: 0 15px; margin-top: 15px;">
                             <div class="item-button-wrapper">
                                 <input type="text" id="customMudurInput" class="item-input-field" placeholder="Yeni müdür adı...">
-                                <button type="button" id="addCustomMudurBtn" class="add-item-action-btn">
+                                <button type="button" id="addCustomMudurBtn" class="ikon-kare-buton">
                                     <i class="fas fa-plus"></i>
                                 </button>
                             </div>
                         </div>
                     </div>
-                    <div class="sidebar-actions">
+                    <!-- <div class="sidebar-actions">
                         <button type="button" id="updateMudurInPlanBtn" class="sidebar-action-btn">Müdürü Güncelle</button>
-                    </div>
+                    </div> -->
                 </div>
 
                 <!-- Öğretmen Yönetimi Görünümü -->
                 <div id="ogretmenYonetimiView" class="sidebar-view">
                     <div class="sidebar-view-content">
                         <div id="sidebarOgretmenList" class="item-list-container">
-                            <!-- Kayıtlı öğretmenler buraya JS ile eklenecek (düzenleme butonu ile) -->
+                            <!-- Öğretmen listesi JS ile buraya eklenecek -->
+                            <!-- Örnek Öğretmen Satırı (JS ile dinamik oluşturulacak):
+                            <div class="item-button-wrapper">
+                                <button class="item-button ogretmen-select-btn" data-id="1">Öğretmen Adı</button>
+                                <button class="ikon-kare-buton" data-id="1" title="Branş Düzenle"><i class="fas fa-chevron-right"></i></button>
+                                <button class="ikon-kare-buton" data-id="1" title="Öğretmeni Sil"><i class="fas fa-trash-alt"></i></button>
+                            </div>
+                            -->
                         </div>
-                        <div style="padding: 15px;">
-                             <button type="button" id="navigateToOgretmenEkleBtn" class="sidebar-action-btn add-new-item-btn">
-                                <i class="fas fa-plus"></i> Yeni Öğretmen Ekle
-                            </button>
+                        <div class="form-group" style="padding: 15px; border-top: 1px solid #eee; margin-top: 10px;">
+                            <label for="newOgretmenNameInput" >Öğretmen Ekle:</label>
+                            <div class="item-button-wrapper">
+                                <input type="text" id="newOgretmenNameInput" class="item-input-field" placeholder="Öğretmen Adı Soyadı..." style="flex-grow: 1;">
+                                <button type="button" id="addNewOgretmenGoToDetailBtn" class="ikon-kare-buton" title="Branş Ekle/Kaydet">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <div class="sidebar-actions">
-                        <button type="button" id="updateOgretmenlerInPlanBtn" class="sidebar-action-btn">Öğretmenleri Güncelle</button>
-                    </div>
+                    <!-- Action butonu kaldırıldı, seçimler anlık yansıyacak -->
                 </div>
 
+                <!-- Öğretmen Detay/Branş Görünümü -->
+                <div id="ogretmenDetayView" class="sidebar-view">
+                    <div class="sidebar-view-content" style="padding: 20px;">
+                        <input type="hidden" id="currentEditingOgretmenId">
+                        <input type="hidden" id="currentEditingOgretmenNameForTitle"> <!-- Öğretmen adını başlık için sakla -->
+                        <!-- Öğretmen adı gösterimi kaldırıldı -->
+                        <!-- <div class="form-group">
+                            <label for="editingOgretmenNameDisplay">Öğretmen Adı:</label>
+                            <p id="editingOgretmenNameDisplay" style="font-weight: bold; margin-bottom: 10px;"></p>
+                        </div> -->
+                        <div class="form-group">
+                            <label for="editingOgretmenBransInput">Branşı:</label>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <input type="text" id="editingOgretmenBransInput" placeholder="Örn: Matematik Öğretmeni" style="flex-grow: 1;">
+                                <button type="button" id="saveOgretmenBransBtn" class="ikon-kare-buton" title="Branşı Kaydet">
+                                    <i class="fas fa-save"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Kaydet butonu kaldırıldı, geri gidince kaydedilecek -->
+                    <!-- <div class="sidebar-actions">
+                        <button type="button" id="saveOgretmenDetayBtn" class="sidebar-action-btn">Kaydet</button>
+                    </div> -->
+                </div>
+
+
                 <!-- Yeni Öğretmen Ekleme Görünümü (Mevcut ogretmenEkleView buna dönüşebilir) -->
-                <div id="ogretmenEkleView" class="sidebar-view">
+                <!-- <div id="ogretmenEkleView" class="sidebar-view"> -->
+                <!-- Bu view kaldırılacak -->
+                <!-- </div> -->
+                <div id="ogretmenEkleView" class="sidebar-view" style="display: none;">
                     <div class="sidebar-view-content" style="padding: 20px;">
                         <div class="form-group">
                             <label for="yeniOgretmenAdiSoyadiInput">Adı Soyadı:</label>
@@ -106,14 +150,17 @@
                         </div>
                     </div>
                     <div class="sidebar-actions">
-                        <button type="button" id="saveYeniOgretmenBtn" class="sidebar-action-btn">Kaydet</button>
+                        <!-- <button type="button" id="saveYeniOgretmenBtn" class="sidebar-action-btn">Kaydet</button> -->
                     </div>
                 </div>
                 
                 <!-- Öğretmen Düzenleme Görünümü -->
-                <div id="ogretmenDuzenleView" class="sidebar-view">
+                <!-- <div id="ogretmenDuzenleView" class="sidebar-view"> -->
+                <!-- Bu view kaldırılacak -->
+                <!-- </div> -->
+                <div id="ogretmenDuzenleView" class="sidebar-view" style="display: none;">
                     <div class="sidebar-view-content" style="padding: 20px;">
-                        <input type="hidden" id="duzenlenenOgretmenIdInput">
+                        <!-- <input type="hidden" id="duzenlenenOgretmenIdInput">
                         <div class="form-group">
                             <label for="duzenlenenOgretmenAdiSoyadiInput">Adı Soyadı:</label>
                             <input type="text" id="duzenlenenOgretmenAdiSoyadiInput">
@@ -121,10 +168,10 @@
                         <div class="form-group">
                             <label for="duzenlenenOgretmenBransInput">Branşı:</label>
                             <input type="text" id="duzenlenenOgretmenBransInput">
-                        </div>
+                        </div> -->
                     </div>
                     <div class="sidebar-actions">
-                        <button type="button" id="saveDuzenlenenOgretmenBtn" class="sidebar-action-btn">Değişiklikleri Kaydet</button>
+                        <!-- <button type="button" id="saveDuzenlenenOgretmenBtn" class="sidebar-action-btn">Değişiklikleri Kaydet</button> -->
                     </div>
                 </div>
 
@@ -147,7 +194,7 @@
                             <label for="customDersSaatiInput" style="display: block; margin-bottom: 5px;">Yeni Ders Saati Ekle:</label>
                             <div class="item-button-wrapper">
                                 <input type="number" id="customDersSaatiInput" class="item-input-field" placeholder="Örn: 9" min="1" step="1" style="flex-grow: 1;">
-                                <button type="button" id="addCustomDersSaatiBtn" class="add-item-action-btn" title="Yeni Ders Saati Ekle">
+                                <button type="button" id="addCustomDersSaatiBtn" class="ikon-kare-buton" title="Yeni Ders Saati Ekle">
                                     <i class="fas fa-plus"></i>
                                 </button>
                             </div>
@@ -164,7 +211,7 @@
                         <div class="form-group" style="padding: 0 15px; margin-top: 15px;">
                             <div class="item-button-wrapper">
                                 <input type="text" id="customYontemTeknikInput" class="item-input-field" placeholder="Yeni yöntem/teknik...">
-                                <button type="button" id="addCustomYontemTeknikBtn" class="add-item-action-btn">
+                                <button type="button" id="addCustomYontemTeknikBtn" class="ikon-kare-buton">
                                     <i class="fas fa-plus"></i>
                                 </button>
                             </div>
@@ -190,7 +237,7 @@
                         <div class="form-group" style="padding: 0 15px; margin-top: 15px;">
                             <div class="item-button-wrapper">
                                 <input type="text" id="customAracGerecInput" class="item-input-field" placeholder="Yeni araç-gereç...">
-                                <button type="button" id="addCustomAracGerecBtn" class="add-item-action-btn">
+                                <button type="button" id="addCustomAracGerecBtn" class="ikon-kare-buton">
                                     <i class="fas fa-plus"></i>
                                 </button>
                             </div>
@@ -237,6 +284,11 @@
                             <input type="week" id="baslangicHaftasiSidebar" name="baslangicHaftasiSidebar">
                             <small style="display: block; margin-top: 5px; color: #555;">Bu haftanın Pazartesi gününden itibaren tarihler otomatik hesaplanacaktır.</small>
                             <div id="planTarihAraligiSidebar" style="margin-top: 10px; font-weight: bold; color: #2c3e50;"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="planOnayTarihiSidebar">Plan Onay Tarihi:</label>
+                            <input type="text" id="planOnayTarihiSidebar" name="planOnayTarihiSidebar" readonly>
+                            <small style="display: block; margin-top: 5px; color: #555;">Bu tarih, planın ilk akademik haftasının başlangıç tarihidir ve otomatik olarak ayarlanır.</small>
                         </div>
                     </div>
                     <div class="sidebar-actions">
