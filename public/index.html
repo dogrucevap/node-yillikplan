@@ -143,8 +143,14 @@
                             <button class="ders-saati-btn" data-saat="7">7 Saat</button>
                             <button class="ders-saati-btn" data-saat="8">8 Saat</button>
                         </div>
-                        <div class="sidebar-actions" style="padding: 15px; border-top: 1px solid #eee; margin-top:15px;">
-                            <button type="button" id="applyDersSaatiToAllBtn" class="sidebar-action-btn">Tüm Haftalara Uygula</button>
+                        <div class="form-group" style="padding: 15px; margin-top: 10px; border-top: 1px solid #eee;">
+                            <label for="customDersSaatiInput" style="display: block; margin-bottom: 5px;">Yeni Ders Saati Ekle:</label>
+                            <div class="item-button-wrapper">
+                                <input type="number" id="customDersSaatiInput" class="item-input-field" placeholder="Örn: 9" min="1" step="1" style="flex-grow: 1;">
+                                <button type="button" id="addCustomDersSaatiBtn" class="add-item-action-btn" title="Yeni Ders Saati Ekle">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

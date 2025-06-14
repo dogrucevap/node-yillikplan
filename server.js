@@ -335,6 +335,63 @@ function ensureAuthenticated(req, res, next) {
   res.status(401).json({ error: "Yetkisiz erişim. Lütfen giriş yapın." });
 }
 
+// Kullanıcıya özel ders saatlerini getirme
+app.get('/api/user-custom-ders-saati', ensureAuthenticated, async (req, res) => {
+  if (!req.user || !req.user.id) {
+    return res.status(400).json({ error: "Kullanıcı kimliği bulunamadı." });
+  }
+  const userGoogleId = req.user.id; 
+
+  try {
+    // user_custom_ders_saatleri tablosu holidayCalculator/database.js içindeki initDB ile oluşturuluyor.
+    // Bu tablo yillik_planlar.sqlite içinde olacak.
+    const sql = 'SELECT ders_saati FROM user_custom_ders_saatleri WHERE user_google_id = ? ORDER BY ders_saati';
+    db.all(sql, [userGoogleId], (err, rows) => {
+      if (err) {
+        console.error("Kullanıcıya özel ders saatleri getirilirken hata:", err.message);
+        return res.status(500).json({ error: "Özel ders saatleri getirilirken sunucu hatası." });
+      }
+      res.json(rows.map(row => ({ ders_saati: row.ders_saati })));
+    });
+  } catch (error) {
+    console.error("GET /api/user-custom-ders-saati hata:", error);
+    res.status(500).json({ error: "Sunucu hatası." });
+  }
+});
+
+// Kullanıcıya özel ders saati ekleme
+app.post('/api/user-custom-ders-saati', ensureAuthenticated, async (req, res) => {
+  if (!req.user || !req.user.id) {
+    return res.status(400).json({ error: "Kullanıcı kimliği bulunamadı." });
+  }
+  const userGoogleId = req.user.id;
+  const { dersSaati } = req.body;
+
+  if (typeof dersSaati !== 'number' || !Number.isInteger(dersSaati) || dersSaati <= 0) {
+    return res.status(400).json({ error: "Geçerli bir pozitif tam sayı ders saati gereklidir." });
+  }
+
+  try {
+    const sql = 'INSERT OR IGNORE INTO user_custom_ders_saatleri (user_google_id, ders_saati) VALUES (?, ?)';
+    // user_custom_ders_saatleri tablosu holidayCalculator/database.js içindeki initDB ile oluşturuluyor.
+    db.run(sql, [userGoogleId, dersSaati], function(err) {
+      if (err) {
+        console.error("Özel ders saati eklenirken hata:", err.message);
+        return res.status(500).json({ error: "Özel ders saati eklenirken sunucu hatası." });
+      }
+      if (this.changes > 0) {
+        res.status(201).json({ message: `${dersSaati} saat başarıyla eklendi.`, dersSaati: dersSaati });
+      } else {
+        // Kayıt zaten varsa ve IGNORE edildiyse, this.changes 0 olur.
+        res.status(200).json({ message: `${dersSaati} saat zaten mevcut veya eklenemedi.`, dersSaati: dersSaati });
+      }
+    });
+  } catch (error) {
+    console.error("POST /api/user-custom-ders-saati hata:", error);
+    res.status(500).json({ error: "Sunucu hatası." });
+  }
+});
+
 // Yeni endpoint: Belirli bir yıl için tatilleri kontrol et/üret
 app.post('/api/ensure-holidays-for-year', ensureAuthenticated, async (req, res) => {
   const { academicYearStart } = req.body; // Örneğin, 2027

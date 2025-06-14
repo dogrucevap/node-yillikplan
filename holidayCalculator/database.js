@@ -33,8 +33,51 @@ class Database {
                         return reject(err);
                     }
                     console.log("'events' tablosu hazır.");
-                    resolve();
+
+                    const createUserCustomDersSaatleriTableSql = `
+                    CREATE TABLE IF NOT EXISTS user_custom_ders_saatleri (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_google_id TEXT NOT NULL,
+                        ders_saati INTEGER NOT NULL,
+                        UNIQUE(user_google_id, ders_saati)
+                    );`;
+                    this.db.run(createUserCustomDersSaatleriTableSql, (err) => {
+                        if (err) {
+                            console.error("'user_custom_ders_saatleri' tablosu oluşturulurken hata:", err.message);
+                            return reject(err);
+                        }
+                        console.log("'user_custom_ders_saatleri' tablosu hazır.");
+                        resolve();
+                    });
                 });
+            });
+        });
+    }
+
+    async addUserCustomDersSaati(userGoogleId, dersSaati) {
+        if (!this.db) await this.initDB();
+        return new Promise((resolve, reject) => {
+            const sql = 'INSERT OR IGNORE INTO user_custom_ders_saatleri (user_google_id, ders_saati) VALUES (?, ?)';
+            this.db.run(sql, [userGoogleId, dersSaati], function(err) {
+                if (err) {
+                    console.error("Özel ders saati eklenirken hata:", err.message);
+                    return reject(err);
+                }
+                resolve({ id: this.lastID, changes: this.changes });
+            });
+        });
+    }
+
+    async getUserCustomDersSaatleri(userGoogleId) {
+        if (!this.db) await this.initDB();
+        return new Promise((resolve, reject) => {
+            const sql = 'SELECT ders_saati FROM user_custom_ders_saatleri WHERE user_google_id = ? ORDER BY ders_saati';
+            this.db.all(sql, [userGoogleId], (err, rows) => {
+                if (err) {
+                    console.error("Kullanıcıya özel ders saatleri getirilirken hata:", err.message);
+                    return reject(err);
+                }
+                resolve(rows.map(row => ({ ders_saati: row.ders_saati })));
             });
         });
     }

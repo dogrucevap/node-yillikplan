@@ -93,6 +93,9 @@ async function checkAuthStatus() {
             if (authData.user.email) userInfoHTML += ` <span class="user-email">(${authData.user.email})</span>`;
             userInfoHTML += ` | <a href="/auth/logout" class="auth-link logout-link">Çıkış Yap</a>`;
             userAuthSection.innerHTML = userInfoHTML;
+            window.currentUser = authData.user; // Kullanıcı bilgisini globalde sakla
+            await loadUserCustomDersSaatleri(); // Kullanıcıya özel ders saatlerini yükle
+
             if (authData.user.displayName) {
                 await loadAllPersonal();
                 const loggedInUserName = authData.user.displayName;
@@ -227,8 +230,134 @@ function populateEgitimOgretimYiliOptions(targetElementId = 'egitimOgretimYiliSi
 }
 
 let seciliDersSaati = null;
-function selectDersSaati(saat) { seciliDersSaati = saat; document.querySelectorAll('.ders-saati-btn').forEach(btn => btn.classList.toggle('selected', btn.dataset.saat === saat)); }
-function applyDersSaatiToAll() { if (seciliDersSaati === null) { showMessage("Lütfen önce bir ders saati seçin.", "error"); return; } baseAcademicPlan.forEach(h => h.dersSaati = seciliDersSaati); updateAllWeekDates(); showMessage(`${seciliDersSaati} ders saati tüm haftalara uygulandı.`, "success"); }
+function selectDersSaati(saat) { 
+    seciliDersSaati = saat; 
+    document.querySelectorAll('.ders-saati-btn').forEach(btn => btn.classList.toggle('selected', btn.dataset.saat === saat));
+    // Ders saati seçildiğinde otomatik olarak tüm haftalara uygula
+    applyDersSaatiToAll(); 
+}
+
+function createDersSaatiButton(saat, isCustom = false, containerId = 'dersSaatiBtnContainer') {
+    const container = document.getElementById(containerId);
+    if (!container) {
+        console.error(`Ders saati buton container (${containerId}) bulunamadı.`);
+        return null;
+    }
+
+    // Aynı saate sahip buton zaten var mı kontrol et
+    const existingButton = container.querySelector(`.ders-saati-btn[data-saat="${saat}"]`);
+    if (existingButton) {
+        // console.log(`Ders saati ${saat} için buton zaten mevcut.`);
+        return existingButton; // Mevcut butonu döndür veya null/false
+    }
+
+    const button = document.createElement('button');
+    button.className = 'ders-saati-btn';
+    button.dataset.saat = saat.toString();
+    button.textContent = `${saat} Saat`;
+    button.addEventListener('click', () => selectDersSaati(saat.toString()));
+
+    if (isCustom) {
+        // Özel butonlar için farklı bir stil veya işaretleyici eklenebilir
+        // button.classList.add('custom-ders-saati-btn'); 
+    }
+    container.appendChild(button);
+    return button;
+}
+
+async function addCustomDersSaati() {
+    const inputElement = document.getElementById('customDersSaatiInput');
+    if (!inputElement) return;
+
+    const saatValueStr = inputElement.value.trim();
+    if (!saatValueStr) {
+        showMessage("Lütfen bir ders saati girin.", "error");
+        return;
+    }
+
+    const saatValue = parseInt(saatValueStr, 10);
+
+    if (isNaN(saatValue) || saatValue <= 0 || !Number.isInteger(saatValue)) {
+        showMessage("Lütfen geçerli bir pozitif tam sayı girin.", "error");
+        return;
+    }
+
+    const existingButton = document.querySelector(`#dersSaatiBtnContainer .ders-saati-btn[data-saat="${saatValue}"]`);
+    if (existingButton) {
+        showMessage(`${saatValue} saat zaten listede mevcut.`, "info");
+        inputElement.value = ''; // Giriş alanını temizle
+        selectDersSaati(saatValue.toString()); // Mevcut butonu seçili yap ve uygula
+        return;
+    }
+
+    const newButton = createDersSaatiButton(saatValue.toString(), true);
+    if (newButton) {
+        inputElement.value = '';
+        showMessage(`${saatValue} saat eklendi ve tüm haftalara uygulandı.`, "success");
+        selectDersSaati(saatValue.toString()); // Yeni eklenen butonu seçili yap ve uygula
+
+        // Kullanıcı giriş yapmışsa DB'ye kaydet
+        if (window.currentUser && window.currentUser.id) {
+            try {
+                const response = await fetch('/api/user-custom-ders-saati', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dersSaati: saatValue })
+                });
+                if (response.ok) {
+                    const result = await response.json();
+                    // console.log('Özel ders saati kaydedildi:', result);
+                    // showMessage(result.message || 'Özel ders saati kaydedildi.', 'success');
+                } else {
+                    const errorResult = await response.json().catch(() => ({ error: "Sunucu hatası" }));
+                    console.error('Özel ders saati kaydetme hatası:', errorResult.error);
+                    showMessage(`Özel ders saati kaydedilemedi: ${errorResult.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Özel ders saati kaydetme ağ hatası:', error);
+                showMessage('Özel ders saati kaydetme sırasında ağ hatası.', 'error');
+            }
+        }
+    }
+}
+
+async function loadUserCustomDersSaatleri() {
+    if (window.currentUser && window.currentUser.id) {
+        try {
+            const response = await fetch('/api/user-custom-ders-saati');
+            if (response.ok) {
+                const customSaatler = await response.json();
+                if (Array.isArray(customSaatler)) {
+                    customSaatler.forEach(item => {
+                        if (item && typeof item.ders_saati === 'number') {
+                            createDersSaatiButton(item.ders_saati.toString(), true);
+                        }
+                    });
+                }
+            } else {
+                console.warn('Kullanıcıya özel ders saatleri yüklenemedi.', response.status);
+            }
+        } catch (error) {
+            console.error('Kullanıcıya özel ders saatleri yüklenirken ağ hatası:', error);
+        }
+    }
+}
+
+
+function applyDersSaatiToAll() { 
+    // seciliDersSaati null kontrolü selectDersSaati içinde yapıldığı için burada gereksiz.
+    // Ancak, eğer seciliDersSaati bir şekilde null gelirse diye bir güvenlik önlemi eklenebilir veya
+    // selectDersSaati fonksiyonunun her zaman geçerli bir saat ile çağrıldığı varsayılabilir.
+    // Şimdilik, selectDersSaati'nin her zaman bir saat ile çağrıldığını varsayıyoruz.
+    if (seciliDersSaati === null) {
+        // Bu durumun normalde oluşmaması gerekir.
+        // showMessage("Bir hata oluştu, ders saati seçilemedi.", "error"); 
+        return; 
+    }
+    baseAcademicPlan.forEach(h => h.dersSaati = seciliDersSaati); 
+    updateAllWeekDates(); 
+    showMessage(`${seciliDersSaati} ders saati tüm haftalara uygulandı.`, "success"); 
+}
 
 let yillikPlan = []; let baseAcademicPlan = []; let currentEditingPlanId = null;
 let tumAracGerecListesi = []; let tumYontemTeknikListesi = []; let tumPersonalListesi = [];
@@ -424,8 +553,14 @@ document.addEventListener('DOMContentLoaded',async function(){
     
     document.querySelectorAll('.sidebar-menu-item').forEach(i=>i.addEventListener('click',(e)=>{e.preventDefault();navigateToView(i.dataset.viewTarget);}));
     document.getElementById('sidebarGlobalBackBtn')?.addEventListener('click',(e)=>{e.preventDefault();navigateToView(e.target.closest('a').dataset.viewTarget);});
-    document.querySelectorAll('.ders-saati-btn').forEach(b=>b.addEventListener('click',()=>selectDersSaati(b.dataset.saat)));
-    document.getElementById('applyDersSaatiToAllBtn')?.addEventListener('click',applyDersSaatiToAll);
+    
+    // Mevcut ders saati butonlarına event listener ekle
+    document.querySelectorAll('#dersSaatiBtnContainer .ders-saati-btn').forEach(b=>b.addEventListener('click',()=>selectDersSaati(b.dataset.saat)));
+    
+    // Yeni özel ders saati ekleme butonu
+    document.getElementById('addCustomDersSaatiBtn')?.addEventListener('click', addCustomDersSaati);
+
+    // document.getElementById('applyDersSaatiToAllBtn')?.addEventListener('click',applyDersSaatiToAll); // Bu satır kaldırıldı.
     document.getElementById('addCustomAracGerecBtn')?.addEventListener('click',addCustomAracGerec);
     ['agEsitleTumHaftalarBtn','agEsitleSeciliHaftalarBtn','agEkleTumHaftalaraBtn','agEkleSeciliHaftalaraBtn'].forEach((id,i)=>{document.getElementById(id)?.addEventListener('click',()=>applyAracGerecAction(i%2===0?'esitle':'ekle'+(i<2?'Tum':'Secili')));});
     document.getElementById('addCustomYontemTeknikBtn')?.addEventListener('click',addCustomYontemTeknik);
@@ -532,5 +667,5 @@ document.addEventListener('DOMContentLoaded',async function(){
     checkAuthStatus();
     
     // Yan menüyü varsayılan olarak açık başlat
-    toggleSidebar(); 
+    // toggleSidebar(); 
 });
