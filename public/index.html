@@ -11,26 +11,21 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📚 MEB Ünitelendirilmiş Yıllık Plan</h1>
-            <p>36 Haftalık Detaylı Ders Planı Oluşturun</p>
+            <h1>TC MEB Ünitelendirilmiş Yıllık Plan Oluşturucu</h1>
             <div id="userAuthSection" class="user-auth-section" style="margin-top: 10px; text-align: right;">
-                <!-- Kullanıcı bilgileri ve giriş/çıkış linkleri buraya JS ile eklenecek -->
             </div>
         </div>
 
-        <div id="planYonetimAlani" class="section" style="border-left-color: #2ecc71; margin-top: 20px; margin-bottom: 20px;">
-            <h3 class="section-title" style="text-align: left; font-size: 18px; border: none; margin-bottom: 15px;">Plan Yönetimi ve Kayıtlı Planlar</h3>
+        <div id="planYonetimAlani" class="section">
+            <h2 class="section-title" >Kayıtlı Planlar</h2>
             <div class="form-group">
                 <label for="currentPlanNameInput">Mevcut Plan Adı (Kaydetmek veya Güncellemek İçin):</label>
                 <div style="display: flex; gap: 10px; align-items: center;">
                     <input type="text" id="currentPlanNameInput" placeholder="Plan adı (boş bırakılırsa otomatik adlandırılır)" style="flex-grow: 1;">
-                    <button type="button" class="demo-btn" onclick="saveCurrentPlan()" style="background: #2ecc71; padding: 12px 20px; white-space: nowrap;">
-                        💾 Kaydet
-                    </button>
+                    <button type="button" class="button" onclick="saveCurrentPlan()">Kaydet</button>
                 </div>
                 <small style="display: block; margin-top: 5px; color: #555;">Var olan bir plan adını girerseniz, o plan güncellenir. Yeni bir ad girerseniz veya boş bırakırsanız yeni plan olarak kaydedilir.</small>
             </div>
-            <h4 style="margin-top: 30px; margin-bottom: 15px; font-size: 16px; color: #2c3e50;">Kaydedilmiş Planlar:</h4>
             <div id="savedPlansListContainer" class="saved-plans-list">
                 <!-- Kaydedilmiş planlar buraya listelenecek -->
             </div>
@@ -50,12 +45,12 @@
                 <!-- Ana Menü Görünümü -->
                 <div id="mainMenuView" class="sidebar-view active-view">
                     <ul class="sidebar-menu">
-                        <li><a href="#" class="sidebar-menu-item" data-view-target="aracGerecView"><i class="fas fa-tools"></i> Araç-Gereç Yönetimi</a></li>
-                        <li><a href="#" class="sidebar-menu-item" data-view-target="dersSaatiView"><i class="fas fa-clock"></i> Ders Saati Yönetimi</a></li>
-                        <li><a href="#" class="sidebar-menu-item" data-view-target="yontemTeknikView"><i class="fas fa-lightbulb"></i> Yöntem ve Teknik Yönetimi</a></li>
-                        <li><a href="#" class="sidebar-menu-item" data-view-target="okulMuduruView"><i class="fas fa-user-tie"></i> Okul Müdürü Yönetimi</a></li>
-                        <li><a href="#" class="sidebar-menu-item" data-view-target="ogretmenYonetimiView"><i class="fas fa-chalkboard-teacher"></i> Öğretmen Yönetimi</a></li>
                         <li><a href="#" class="sidebar-menu-item" data-view-target="genelPlanBilgileriView"><i class="fas fa-file-alt"></i> Genel Plan Bilgileri</a></li>
+                        <li><a href="#" class="sidebar-menu-item" data-view-target="ogretmenYonetimiView"><i class="fas fa-chalkboard-teacher"></i> Öğretmen Yönetimi</a></li>
+                        <li><a href="#" class="sidebar-menu-item" data-view-target="okulMuduruView"><i class="fas fa-user-tie"></i> Okul Müdürü Yönetimi</a></li>
+                        <li><a href="#" class="sidebar-menu-item" data-view-target="dersSaatiView"><i class="fas fa-clock"></i> Ders Saati Yönetimi</a></li>
+                        <li><a href="#" class="sidebar-menu-item" data-view-target="aracGerecView"><i class="fas fa-tools"></i> Araç-Gereç Yönetimi</a></li>
+                        <li><a href="#" class="sidebar-menu-item" data-view-target="yontemTeknikView"><i class="fas fa-lightbulb"></i> Yöntem ve Teknik Yönetimi</a></li>
                         <li><a href="#" class="sidebar-menu-item" id="loadDemoDataBtn"><i class="fas fa-database"></i> Demo Veri Yükle</a></li>
                         <!-- Diğer ayar seçenekleri buraya eklenebilir -->
                     </ul>
@@ -251,7 +246,7 @@
             <div id="message" class="message"></div>
 
             <form id="planForm">
-                <div id="yillik-plan"> {/* Sekme yapısı kaldırıldı, doğrudan yıllık plan */}
+                <div id="yillik-plan">
                     <h2 id="yillikPlanBasligi" style="text-align: center; margin-bottom: 20px;"></h2>
                     <div class="hafta-header">
                         <div>Seç</div>

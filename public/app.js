@@ -5,6 +5,36 @@ const settingsBtn = document.getElementById('settingsBtn'); // floating button
 let currentSidebarView = 'mainMenuView';
 let isSidebarOpen = false; // Yan menünün durumunu takip etmek için
 
+function updateSidebarActionButtonsState() {
+    // Bu fonksiyon, kenar çubuğundaki eylem düğmelerinin durumunu
+    // mevcut seçimlere veya genel duruma göre günceller (örn. haftalar seçiliyse ilgili butonları aktif et).
+    // console.log('updateSidebarActionButtonsState çağrıldı');
+
+    const selectedWeeks = document.querySelectorAll('#haftaContainer .week-checkbox:checked:not(:disabled)');
+    // const mudurSelected = document.querySelector('#sidebarMudurList .mudur-item-button.selected'); // Gerekirse kullanılabilir
+
+    // Örnek: Seçili haftalara araç-gereç/yöntem-teknik uygulama butonları
+    const agEkleSeciliBtn = document.getElementById('agEkleSeciliHaftalaraBtn');
+    if (agEkleSeciliBtn) agEkleSeciliBtn.disabled = selectedWeeks.length === 0;
+    
+    const agEsitleSeciliBtn = document.getElementById('agEsitleSeciliHaftalarBtn');
+    if (agEsitleSeciliBtn) agEsitleSeciliBtn.disabled = selectedWeeks.length === 0;
+
+    const ytEkleSeciliBtn = document.getElementById('ytEkleSeciliHaftalaraBtn');
+    if (ytEkleSeciliBtn) ytEkleSeciliBtn.disabled = selectedWeeks.length === 0;
+
+    const ytEsitleSeciliBtn = document.getElementById('ytEsitleSeciliHaftalarBtn');
+    if (ytEsitleSeciliBtn) ytEsitleSeciliBtn.disabled = selectedWeeks.length === 0;
+
+    // Diğer butonlar için benzer mantıklar eklenebilir.
+    // Örneğin, "Seçili Öğretmenleri Plana Ekle" butonu:
+    // const updateOgretmenlerBtn = document.getElementById('updateOgretmenlerInPlanBtn');
+    // if (updateOgretmenlerBtn) {
+    //    const selectedOgretmenler = document.querySelectorAll('#sidebarOgretmenList .ogretmen-item-button.selected');
+    //    updateOgretmenlerBtn.disabled = selectedOgretmenler.length === 0;
+    // }
+}
+
 // toggleSidebar fonksiyon tanımı
 function toggleSidebar() {
     isSidebarOpen = !isSidebarOpen;

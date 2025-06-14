@@ -5,14 +5,11 @@
 }
 
 body {
-    font-family: 'Roboto', sans-serif; 
-    font-size: 18px; 
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: Roboto, sans-serif;
     min-height: 100vh;
-    padding: 20px; 
     overflow-x: hidden; 
     position: relative; 
-    transition: padding-left 0.3s ease-in-out; /* Daha hızlı geçiş */
+    transition: padding-left 0.3s ease-in-out; 
 }
 
 .container {
@@ -25,10 +22,9 @@ body {
 }
 
 .header {
-    background: #2c3e50;
-    color: white;
+
     padding: 30px;
-    text-align: center;
+  
 }
 
 .header h1 {
@@ -61,14 +57,9 @@ body.sidebar-active {
     margin-bottom: 40px;
     padding: 25px;
     background: #f8f9fa;
-    border-radius: 8px;
-    border-left: 4px solid #3498db;
 }
 
 .section-title {
-    font-size: 22px; /* 24px'e yakın, hiyerarşi için */
-    font-weight: 600;
-    color: #2c3e50;
     margin-bottom: 20px;
     display: flex;
     align-items: center;
@@ -144,23 +135,6 @@ input:focus, textarea:focus, select:focus {
 .checkbox-item input[type="checkbox"] {
     width: auto;
     margin: 0;
-}
-
-.demo-btn {
-    background: #f39c12;
-    color: white;
-    border: none;
-    padding: 12px 20px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 16px; /* Güncellendi */
-    font-weight: 600;
-    /* margin-bottom: 20px; */ /* action-buttons-container'a taşındı */
-    transition: background 0.3s;
-}
-
-.demo-btn:hover {
-    background: #e67e22;
 }
 
 .action-buttons-container {
@@ -586,13 +560,8 @@ body.dragging-active, body.dragging-active * {
     justify-content: center;
 }
 
-/* Plan Yönetim Alanı ve Kayıtlı Planlar Listesi Stilleri */
 #planYonetimAlani {
-    margin-top: 30px;
-    padding: 25px;
-    background: #f0f4f8; /* Biraz farklı bir arka plan */
-    border-radius: 8px;
-    border-left: 4px solid #2ecc71; /* Yeşil vurgu */
+    background: #f0f4f8; 
 }
 
 #planYonetimAlani .form-group label {
