@@ -102,75 +102,129 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
 function insertDemoDataIfNeeded() {
   const demoDataPath = path.join(__dirname, 'demo-data.json');
   fs.readFile(demoDataPath, 'utf8', (err, jsonData) => {
-    if (err) { return; }
+    if (err) { 
+      console.error("Demo veri dosyası okuma hatası:", err.message);
+      return; 
+    }
     try {
       const demoData = JSON.parse(jsonData);
+
       const insertOgretmenStmt = db.prepare("INSERT OR IGNORE INTO ogretmenler (ad_soyad, unvan) VALUES (?, ?)");
       if (demoData.ogretmen) {
         insertOgretmenStmt.run(demoData.ogretmen, "Öğretmen");
       }
-      insertOgretmenStmt.finalize((err) => {
-        if (err) console.error("Demo öğretmenleri ekleme hatası (finalize):", err.message);
-      });
-
-      db.get("SELECT id FROM plans WHERE plan_name = ?", ["demo_matematik_9"], (err, row) => {
-        if (err) {
-            console.error("Demo plan kontrol hatası:", err.message);
-            return;
-        }
-        if (row) return; 
-
-        db.serialize(() => {
-            const demoBaseAcademicPlan = demoData.haftalikPlan.map((week, index) => ({
-                originalAcademicWeek: index + 1, unite: week.unite || '', konu: week.konu || '', kazanim: week.kazanim || '',
-                dersSaati: week.dersSaati || demoData.dersSaati || '4', aracGerec: week.aracGerec || [],
-                yontemTeknik: week.yontemTeknik || [], olcmeDeğerlendirme: week.olcmeDeğerlendirme || '', aciklama: week.aciklama || ''
-            }));
-            const demoFullYillikPlan = [];
-            let demoAcademicPlanIndex = 0;
-            const TATIL_DONEMLERI_SERVER = { 
-                ARA_TATIL_1: { duration: 1, afterAcademicWeek: 9, label: "1. Ara Tatil" },
-                YARIYIL_TATILI: { duration: 2, afterAcademicWeek: 18, label: "Yarıyıl Tatili" },
-                ARA_TATIL_2: { duration: 1, afterAcademicWeek: 27, label: "2. Ara Tatil" }
-            };
-            while(demoAcademicPlanIndex < demoBaseAcademicPlan.length) {
-                for (const holidayKey in TATIL_DONEMLERI_SERVER) {
-                    if (TATIL_DONEMLERI_SERVER[holidayKey].afterAcademicWeek === demoAcademicPlanIndex) {
-                 const holiday = TATIL_DONEMLERI_SERVER[holidayKey];
-                 demoFullYillikPlan.push({ type: 'holiday', label: holiday.label, duration: holiday.duration, tarih: `(${holiday.duration} Hafta)` });
-                 break; 
-            }
-        }
-        const academicWeekData = demoBaseAcademicPlan[demoAcademicPlanIndex];
-        demoFullYillikPlan.push({ ...academicWeekData, type: 'academic', tarih: '' }); 
-        demoAcademicPlanIndex++;
-    }
-    for (const holidayKey in TATIL_DONEMLERI_SERVER) {
-        if (TATIL_DONEMLERI_SERVER[holidayKey].afterAcademicWeek === demoBaseAcademicPlan.length) {
-             const holiday = TATIL_DONEMLERI_SERVER[holidayKey];
-             demoFullYillikPlan.push({ type: 'holiday', label: holiday.label, duration: holiday.duration, tarih: `(${holiday.duration} Hafta)` });
-             break;
-        }
-    }
-    const stmtPlan = db.prepare("INSERT INTO plans (plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, varsayilan_arac_gerec, base_academic_plan_json, plan_data_json, additional_teachers_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            stmtPlan.run("demo_matematik_9", demoData.okul, demoData.ogretmen, demoData.ders, demoData.sinif,
-              demoData.egitimOgretimYili, demoData.dersSaati,
-              JSON.stringify(demoData.varsayilanAracGerec),
-              JSON.stringify(demoBaseAcademicPlan),
-              JSON.stringify(demoFullYillikPlan), 
-              JSON.stringify(demoData.additionalTeachers || [])); 
-            stmtPlan.finalize();
+      if (demoData.additionalTeachers && Array.isArray(demoData.additionalTeachers)) {
+        demoData.additionalTeachers.forEach(teacher => {
+          if (teacher.name && teacher.branch) { // Ensure name and branch exist for additional teachers
+            insertOgretmenStmt.run(teacher.name, teacher.branch);
+          }
         });
+      }
+      insertOgretmenStmt.finalize((finalizeErr) => {
+        if (finalizeErr) console.error("Demo öğretmenleri ekleme hatası (finalize):", finalizeErr.message);
       });
-    } catch (parseErr) { console.error("Demo veri JSON parse hatası:", parseErr); }
+
+      db.serialize(() => {
+        db.run("DELETE FROM plans WHERE plan_name = ?", ["demo_matematik_9"], function(deleteErr) {
+          if (deleteErr) {
+            console.error("Demo planı silme hatası (yeniden eklemeden önce):", deleteErr.message);
+          }
+          if (this.changes > 0) {
+            console.log("Mevcut demo_matematik_9 planı silindi, yeniden eklenecek.");
+          }
+
+          const demoBaseAcademicPlan = demoData.haftalikPlan.map((week, index) => ({
+            originalAcademicWeek: index + 1,
+            unite: week.unite || '',
+            konu: week.konu || '',
+            kazanim: week.kazanim || '',
+            dersSaati: week.dersSaati || demoData.dersSaati || '4',
+            aracGerec: week.aracGerec || [],
+            yontemTeknik: week.yontemTeknik || [],
+            olcmeDeğerlendirme: week.olcmeDeğerlendirme || '',
+            aciklama: week.aciklama || ''
+          }));
+
+          const demoFullYillikPlan = [];
+          let demoAcademicPlanIndex = 0;
+          const TATIL_DONEMLERI_SERVER = {
+            ARA_TATIL_1: { duration: 1, afterAcademicWeek: 9, label: "1. Ara Tatil" },
+            YARIYIL_TATILI: { duration: 2, afterAcademicWeek: 18, label: "Yarıyıl Tatili" },
+            ARA_TATIL_2: { duration: 1, afterAcademicWeek: 27, label: "2. Ara Tatil" }
+          };
+
+          while(demoAcademicPlanIndex < demoBaseAcademicPlan.length) {
+            let holidayProcessedInLoop = false;
+            for (const holidayKey in TATIL_DONEMLERI_SERVER) {
+              if (TATIL_DONEMLERI_SERVER[holidayKey].afterAcademicWeek === demoAcademicPlanIndex) {
+                const holiday = TATIL_DONEMLERI_SERVER[holidayKey];
+                demoFullYillikPlan.push({ 
+                  type: 'holiday', 
+                  label: holiday.label, 
+                  duration: holiday.duration, 
+                  tarih: `(${holiday.duration} Hafta)` 
+                });
+                holidayProcessedInLoop = true; 
+                break; 
+              }
+            }
+            if (demoAcademicPlanIndex < demoBaseAcademicPlan.length) {
+                 const academicWeekData = demoBaseAcademicPlan[demoAcademicPlanIndex];
+                 demoFullYillikPlan.push({ ...academicWeekData, type: 'academic', tarih: '' });
+                 demoAcademicPlanIndex++;
+            } else if (!holidayProcessedInLoop) { // Avoid infinite loop if last item was a holiday
+                break;
+            }
+          }
+          for (const holidayKey in TATIL_DONEMLERI_SERVER) {
+            if (TATIL_DONEMLERI_SERVER[holidayKey].afterAcademicWeek === demoBaseAcademicPlan.length) {
+              if (!demoFullYillikPlan.some(p => p.type === 'holiday' && p.label === TATIL_DONEMLERI_SERVER[holidayKey].label)) {
+                 const holiday = TATIL_DONEMLERI_SERVER[holidayKey];
+                 demoFullYillikPlan.push({ 
+                    type: 'holiday', 
+                    label: holiday.label, 
+                    duration: holiday.duration,
+                    tarih: `(${holiday.duration} Hafta)` 
+                });
+              }
+              break;
+            }
+          }
+          
+          const stmtPlan = db.prepare("INSERT INTO plans (plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, varsayilan_arac_gerec, base_academic_plan_json, plan_data_json, additional_teachers_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+          stmtPlan.run(
+            "demo_matematik_9",
+            demoData.okul,
+            demoData.ogretmen,
+            demoData.ders,
+            demoData.sinif,
+            demoData.egitimOgretimYili,
+            demoData.dersSaati,
+            JSON.stringify(demoData.varsayilanAracGerec || []),
+            JSON.stringify(demoBaseAcademicPlan),
+            JSON.stringify(demoFullYillikPlan),
+            JSON.stringify(demoData.additionalTeachers || [])
+          );
+          stmtPlan.finalize((finalizeErr) => {
+            if (finalizeErr) {
+              console.error("Demo plan ekleme (finalize) hatası:", finalizeErr.message);
+            } else {
+              console.log("demo_matematik_9 planı başarıyla eklendi/güncellendi.");
+            }
+          });
+        }); 
+      }); 
+    } catch (parseErr) { 
+      console.error("Demo veri JSON parse hatası:", parseErr.message); 
+    }
   });
 }
 
 app.use(cors());
 app.use(express.json({limit: '5mb'}));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Session ve Passport Başlangıcı
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your_very_secret_key_12345', 
   resave: false,
@@ -181,7 +235,6 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Google OAuth 2.0 Stratejisi
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID, 
     clientSecret: process.env.GOOGLE_CLIENT_SECRET, 
@@ -231,11 +284,8 @@ passport.deserializeUser(function(user, cb) {
   });
 });
 
-// Statik dosyalar ve ana rota (Passport başlatıldıktan SONRA olmalı)
-app.use(express.static(path.join(__dirname, 'public')));
-
 app.get('/auth/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] }));
+  passport.authenticate('google', { scope: ['profile', 'email'] })); 
 
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/login-failed.html' }), 
@@ -272,17 +322,16 @@ app.get('/auth/logout', (req, res, next) => {
   });
 });
 
+app.get('/api/profile', ensureAuthenticated, (req, res) => {
+  res.json({ message: "Bu korumalı bir rota!", user: req.user });
+});
+
 function ensureAuthenticated(req, res, next) {
   if (req.isAuthenticated()) {
     return next();
   }
   res.status(401).json({ error: "Yetkisiz erişim. Lütfen giriş yapın." });
 }
-
-// API Rotaları (ensureAuthenticated ile korunabilir)
-app.get('/api/profile', ensureAuthenticated, (req, res) => {
-  res.json({ message: "Bu korumalı bir rota!", user: req.user });
-});
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -295,15 +344,20 @@ app.get('/demo-data', async (req, res) => {
             if (err) reject(err); else resolve(row);
           });
         });
+
         if (!planRow) return res.status(404).json({ error: 'Demo plan bulunamadı' });
+
         const basePlan = JSON.parse(planRow.base_academic_plan_json || "[]");
         const demoPlanData = {
           okul: planRow.okul, ogretmen: planRow.ogretmen, ders: planRow.ders, sinif: planRow.sinif,
           egitimOgretimYili: planRow.egitim_ogretim_yili, dersSaati: planRow.ders_saati,
-          varsayilanAracGerec: JSON.parse(planRow.varsayilan_arac_gerec || "[]"), haftalikPlan: basePlan
+          varsayilanAracGerec: JSON.parse(planRow.varsayilan_arac_gerec || "[]"), haftalikPlan: basePlan,
+          additional_teachers_json: JSON.parse(planRow.additional_teachers_json || "[]"), // Eklendi
+          plan_data_json: JSON.parse(planRow.plan_data_json || "null") // Eklendi
         };
         res.json(demoPlanData);
     } catch (error) {
+        console.error("Demo veri yükleme hatası:", error.message); // Hata loglandı
         res.status(500).json({ error: 'Demo veriler yüklenirken sunucu hatası oluştu' });
     }
 });
@@ -337,11 +391,14 @@ app.get('/api/plans/:id', (req, res) => {
 
 app.post('/api/plans', (req, res) => {
     const { plan_id, plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, varsayilan_arac_gerec, plan_data_json, base_academic_plan_json, additional_teachers } = req.body;
+
     if (!plan_name) return res.status(400).json({ error: "Plan adı gereklidir." });
+
     const sVarsayilanAracGerec = JSON.stringify(varsayilan_arac_gerec || []);
     const sPlanDataJson = JSON.stringify(plan_data_json || null);
     const sBaseAcademicPlanJson = JSON.stringify(base_academic_plan_json || null);
     const sAdditionalTeachersJson = JSON.stringify(additional_teachers || []);
+
     if (plan_id) {
         const stmt = db.prepare(`UPDATE plans SET 
             plan_name = ?, okul = ?, ogretmen = ?, ders = ?, sinif = ?, 
@@ -514,6 +571,7 @@ app.post('/api/ogretmenler', (req, res) => {
     }
     const trimmedAdSoyad = ad_soyad.trim();
     const trimmedUnvan = unvan.trim();
+
     const stmt = db.prepare("INSERT INTO ogretmenler (ad_soyad, unvan) VALUES (?, ?)");
     stmt.run(trimmedAdSoyad, trimmedUnvan, function(err) {
         if (err) {
@@ -546,9 +604,11 @@ app.delete('/api/ogretmenler/:id', (req, res) => {
     });
 });
 
+
 app.post('/generate-plan', async (req, res) => {
   try {
     const { okul, ogretmen, ders, sinif, egitimOgretimYili, dersSaati, haftalikPlan, additionalTeachers } = req.body;
+
     const tableHeader = new TableRow({
         children: [
             new TableCell({ children: [new Paragraph({ text: "Hafta", alignment: AlignmentType.CENTER })], verticalAlign: "center" }),
@@ -563,6 +623,7 @@ app.post('/generate-plan', async (req, res) => {
         tableHeader: true,
     });
     const tableRows = [tableHeader];
+
     haftalikPlan.forEach(haftaData => {
         if (haftaData.type === 'holiday') {
             const labelText = haftaData.tarih ? `${haftaData.label} (${haftaData.tarih})` : haftaData.label;
@@ -579,6 +640,7 @@ app.post('/generate-plan', async (req, res) => {
         } else {
             const aracGerecText = Array.isArray(haftaData.aracGerec) ? haftaData.aracGerec.join(', ') : (haftaData.aracGerec || '');
             const yontemTeknikText = Array.isArray(haftaData.yontemTeknik) ? haftaData.yontemTeknik.join(', ') : (haftaData.yontemTeknik || '');
+
             tableRows.push(new TableRow({
                 children: [
                     new TableCell({ children: [new Paragraph({ text: String(haftaData.originalAcademicWeek || ''), alignment: AlignmentType.CENTER })] }),
@@ -593,6 +655,7 @@ app.post('/generate-plan', async (req, res) => {
             }));
         }
     });
+
     const signatureCells = [];
     signatureCells.push(new TableCell({
         children: [
@@ -601,24 +664,30 @@ app.post('/generate-plan', async (req, res) => {
             new Paragraph({ children: [new TextRun({ text: "\n\nİmza", size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }), 
         ],
     }));
+
     if (additionalTeachers && Array.isArray(additionalTeachers)) {
         additionalTeachers.forEach(ekOgretmen => {
-            if (ekOgretmen.adSoyad && ekOgretmen.unvan) {
+            // Ensure ekOgretmen.name and ekOgretmen.branch are used, not adSoyad/unvan if the structure is different
+            const name = ekOgretmen.name || ekOgretmen.adSoyad;
+            const branch = ekOgretmen.branch || ekOgretmen.unvan;
+            if (name && branch) {
                 signatureCells.push(new TableCell({
                     children: [
-                        new Paragraph({ children: [new TextRun({ text: ekOgretmen.adSoyad, bold: false, size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }),
-                        new Paragraph({ children: [new TextRun({ text: ekOgretmen.unvan, bold: true, size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }),
+                        new Paragraph({ children: [new TextRun({ text: name, bold: false, size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }),
+                        new Paragraph({ children: [new TextRun({ text: branch, bold: true, size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }),
                         new Paragraph({ children: [new TextRun({ text: "\n\nİmza", size: 20, font: "Times New Roman" })], alignment: AlignmentType.CENTER }),
                     ],
                 }));
             }
         });
     }
+    
     const signatureRows = [];
     const cellsPerRow = 3; 
     for (let i = 0; i < signatureCells.length; i += cellsPerRow) {
         signatureRows.push(new TableRow({ children: signatureCells.slice(i, i + cellsPerRow) }));
     }
+
     const doc = new Document({
         creator: "Yillik Plan Oluşturucu",
         description: "Otomatik oluşturulmuş yıllık plan",
@@ -701,13 +770,16 @@ app.post('/generate-plan', async (req, res) => {
             ],
         }],
     });
+
     const buffer = await Packer.toBuffer(doc);
     const safeDers = ders.replace(/[^a-zA-Z0-9]/g, '_');
     const safeSinif = sinif.replace(/[^a-zA-Z0-9]/g, '_');
     const fileName = `yillik_plan_${safeDers}_${safeSinif}_${Date.now()}.docx`;
+
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
     res.send(buffer);
+
   } catch (error) {
     console.error('Hata:', error);
     res.status(500).json({ message: 'Belge oluşturulurken bir sunucu hatası oluştu.', error: error.message });
