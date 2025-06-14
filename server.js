@@ -221,6 +221,7 @@ function insertDemoDataIfNeeded() {
 }
 
 app.use(cors());
+app.set('trust proxy', 1); // Proxy başlıklarına güven
 app.use(express.json({limit: '5mb'}));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
