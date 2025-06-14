@@ -16,7 +16,10 @@
     "express-session": "^1.18.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "date-fns": "^3.0.0",
+    "moment": "^2.29.0",
+    "moment-hijri": "^2.1.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

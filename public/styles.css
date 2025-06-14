@@ -1138,8 +1138,7 @@ body.dragging-active, body.dragging-active * {
 
 /* Kullanıcı Kimlik Doğrulama Bölümü Stilleri */
 .user-auth-section {
-    font-size: 14px; /* Temel font boyutundan biraz daha küçük */
-    color: #f0f0f0; /* Header arka planına uygun açık renk */
+
 }
 
 .user-auth-section .user-avatar {
@@ -1189,4 +1188,105 @@ body.dragging-active, body.dragging-active * {
 .user-auth-section .logout-link:hover {
     background-color: #e74c3c;
     color: white;
+}
+
+/* Notification Toast Styles (Order Status Notification Example) */
+:root {
+    /* Bildirimlere özel renk değişkenleri */
+    --notification-primary: #3d61ab;
+    --notification-primary-light: #eef1f8;
+    --notification-secondary: #ff7d4d;
+    --notification-neutral-100: #f7f7f7;
+    --notification-neutral-400: #a9a9a9;
+    --notification-neutral-500: #6f6f6f;
+    --notification-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    --notification-transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.notification-toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: white;
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    opacity: 0;
+    transition: var(--notification-transition);
+    z-index: 10000; /* Diğer elementlerin üzerinde olması için yüksek bir z-index */
+    max-width: 350px;
+    width: calc(100% - 3rem); /* Kenarlardan boşluk bırakmak için */
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; /* Örnekteki font */
+}
+
+.notification-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.notification-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--notification-primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--notification-primary);
+    font-size: 1rem;
+    flex-shrink: 0; /* Küçülmesini engelle */
+}
+
+.notification-content {
+    flex: 1;
+}
+
+.notification-title {
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+    color: #333; /* Projenin genel metin rengiyle uyumlu olabilir */
+}
+
+.notification-text {
+    font-size: 0.75rem;
+    color: var(--notification-neutral-500);
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: var(--notification-neutral-400);
+    cursor: pointer;
+    padding: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1; /* Düğme yüksekliğini etkilememesi için */
+}
+.notification-close:hover {
+    color: #333;
+}
+
+/* Bildirim türlerine göre ek stiller (isteğe bağlı) */
+.notification-toast.success .notification-icon {
+    background-color: #e6f7f0; /* Yeşil tonu */
+    color: #38c172;
+}
+
+.notification-toast.error .notification-icon {
+    background-color: #fdecea; /* Kırmızı tonu */
+    color: #e74c3c;
+}
+
+.notification-toast.warning .notification-icon {
+    background-color: #fff8e1; /* Sarı tonu */
+    color: #f1c40f;
+}
+
+.notification-toast.info .notification-icon {
+    background-color: var(--notification-primary-light);
+    color: var(--notification-primary);
 }

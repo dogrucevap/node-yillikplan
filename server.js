@@ -8,6 +8,7 @@ const sqlite3 = require('sqlite3').verbose();
 const session = require('express-session');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const { generateAndStoreYear } = require('./holidayCalculator/holidayManager'); // Tatil hesaplama modülü
 
 const app = express();
 const PORT = process.env.PORT || 8080; // Portu ortam değişkeninden veya varsayılan olarak 8080 al
@@ -334,6 +335,32 @@ function ensureAuthenticated(req, res, next) {
   res.status(401).json({ error: "Yetkisiz erişim. Lütfen giriş yapın." });
 }
 
+// Yeni endpoint: Belirli bir yıl için tatilleri kontrol et/üret
+app.post('/api/ensure-holidays-for-year', ensureAuthenticated, async (req, res) => {
+  const { academicYearStart } = req.body; // Örneğin, 2027
+  
+  if (!academicYearStart || isNaN(parseInt(academicYearStart, 10))) {
+    return res.status(400).json({ error: "Geçerli bir başlangıç yılı (academicYearStart) gereklidir." });
+  }
+
+  const targetYear = parseInt(academicYearStart, 10);
+
+  try {
+    console.log(`${targetYear} yılı için tatil kontrolü ve üretimi (sidebar seçimi ile) başlıyor...`);
+    const success = await generateAndStoreYear(targetYear, DB_PATH);
+    if (success) {
+      console.log(`${targetYear} yılı için tatil kontrolü ve üretimi (sidebar seçimi ile) başarıyla tamamlandı.`);
+      res.status(200).json({ message: `${targetYear} yılı için tatiller başarıyla kontrol edildi/üretildi.` });
+    } else {
+      console.error(`${targetYear} yılı için tatil kontrolü/üretimi (sidebar seçimi ile) başarısız oldu.`);
+      res.status(500).json({ error: `${targetYear} yılı için tatiller üretilirken bir sorun oluştu.` });
+    }
+  } catch (holidayError) {
+    console.error(`${targetYear} yılı için tatil üretimi sırasında (sidebar seçimi ile) hata:`, holidayError);
+    res.status(500).json({ error: `Tatil üretimi sırasında hata: ${holidayError.message}` });
+  }
+});
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -390,10 +417,31 @@ app.get('/api/plans/:id', (req, res) => {
     });
 });
 
-app.post('/api/plans', ensureAuthenticated, (req, res) => {
+app.post('/api/plans', ensureAuthenticated, async (req, res) => { // async eklendi
     const { plan_id, plan_name, okul, ogretmen, ders, sinif, egitim_ogretim_yili, ders_saati, varsayilan_arac_gerec, plan_data_json, base_academic_plan_json, additional_teachers } = req.body;
 
     if (!plan_name) return res.status(400).json({ error: "Plan adı gereklidir." });
+
+    // Tatil üretimi artık /api/ensure-holidays-for-year endpoint'i üzerinden yapıldığı için
+    // buradaki direkt çağrıyı kaldırıyoruz.
+    // let targetYearForHolidays = null;
+    // if (egitim_ogretim_yili && typeof egitim_ogretim_yili === 'string') {
+    //     const yearParts = egitim_ogretim_yili.split('-');
+    //     if (yearParts.length > 0 && !isNaN(parseInt(yearParts[0], 10))) {
+    //         targetYearForHolidays = parseInt(yearParts[0], 10);
+    //     }
+    // }
+    // if (targetYearForHolidays) {
+    //     try {
+    //         console.log(`${targetYearForHolidays} yılı için tatil kontrolü ve üretimi başlıyor...`);
+    //         await generateAndStoreYear(targetYearForHolidays, DB_PATH);
+    //         console.log(`${targetYearForHolidays} yılı için tatil kontrolü ve üretimi tamamlandı.`);
+    //     } catch (holidayError) {
+    //         console.error(`${targetYearForHolidays} yılı için tatil üretimi sırasında hata:`, holidayError);
+    //     }
+    // } else {
+    //     console.warn("Geçerli bir eğitim-öğretim yılı bulunamadığı için tatil üretimi atlandı.");
+    // }
 
     const sVarsayilanAracGerec = JSON.stringify(varsayilan_arac_gerec || []);
     const sPlanDataJson = JSON.stringify(plan_data_json || null);

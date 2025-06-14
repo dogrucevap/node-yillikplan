@@ -327,7 +327,83 @@ function formatDateRange(start,dur=1){const end=new Date(start);end.setDate(star
 
 function updateAllWeekDates(){const weekIn=document.getElementById('baslangicHaftasiSidebar')?.value;const tarihRangeEl=document.getElementById('planTarihAraligiSidebar');baseAcademicPlan.forEach((item,idx)=>item.originalAcademicWeek=idx+1);const newPlan=[];let acadCursor=0;let currentMon;if(weekIn){const[year,weekNum]=weekIn.split('-W').map(Number);currentMon=getMondayOfWeek(year,weekNum);}let planWeekCnt=0;while(acadCursor<baseAcademicPlan.length){let holidayAdded=false;for(const k in TATIL_DONEMLERI){if(TATIL_DONEMLERI[k].afterAcademicWeek===acadCursor){const hol=TATIL_DONEMLERI[k];const holData={type:'holiday',label:hol.label,duration:hol.duration,planWeekNum:++planWeekCnt};if(currentMon){holData.tarih=formatDateRange(new Date(currentMon),hol.duration);currentMon.setDate(currentMon.getDate()+(7*hol.duration));}newPlan.push(holData);holidayAdded=true;break;}}if(acadCursor<baseAcademicPlan.length){const acadWeekData={...baseAcademicPlan[acadCursor],type:'academic',planWeekNum:++planWeekCnt};if(currentMon){acadWeekData.tarih=formatDateRange(new Date(currentMon));currentMon.setDate(currentMon.getDate()+7);}newPlan.push(acadWeekData);acadCursor++;}else if(!holidayAdded)break;}for(const k in TATIL_DONEMLERI){if(TATIL_DONEMLERI[k].afterAcademicWeek===baseAcademicPlan.length&&!newPlan.find(p=>p.label===TATIL_DONEMLERI[k].label)){const hol=TATIL_DONEMLERI[k];const holData={type:'holiday',label:hol.label,duration:hol.duration,planWeekNum:++planWeekCnt};if(currentMon)holData.tarih=formatDateRange(new Date(currentMon),hol.duration);newPlan.push(holData);break;}}yillikPlan=newPlan;renderYillikPlan();if(tarihRangeEl){if(yillikPlan.length>0&&yillikPlan[0].tarih&&yillikPlan[yillikPlan.length-1].tarih){const firstDate=yillikPlan[0].tarih.split(' - ')[0];const lastWeek=yillikPlan[yillikPlan.length-1];const lastDate=lastWeek.tarih.split(' - ')[1]||lastWeek.tarih.split(' - ')[0];tarihRangeEl.textContent=`Plan Tarih Aralığı: ${firstDate} - ${lastDate}`;}else tarihRangeEl.textContent='Başlangıç haftası seçilmedi.';}}
 
-function showMessage(text,type){const m=document.getElementById('message');m.textContent=text;m.className=`message ${type}`;m.style.display='block';setTimeout(()=>m.style.display='none',5000);}
+function showMessage(text, type = 'info', duration = 5000) {
+    const existingNotification = document.querySelector('.notification-toast');
+    if (existingNotification) {
+        existingNotification.remove(); // Önceki bildirimi kaldır
+    }
+
+    const notification = document.createElement('div');
+    notification.classList.add('notification-toast');
+
+    let title = 'Bilgi';
+    let iconContent = 'ℹ️'; // Default icon for info
+
+    if (type === 'success') {
+        title = 'Başarılı';
+        iconContent = '✔️';
+        notification.classList.add('success');
+    } else if (type === 'error') {
+        title = 'Hata';
+        iconContent = '✖️';
+        notification.classList.add('error');
+    } else if (type === 'warning') {
+        title = 'Uyarı';
+        iconContent = '⚠️';
+        notification.classList.add('warning');
+    } else { // Default to info type
+        notification.classList.add('info');
+    }
+
+    notification.innerHTML = `
+        <div class="notification-icon">${iconContent}</div>
+        <div class="notification-content">
+            <div class="notification-title">${title}</div>
+            <div class="notification-text">${text}</div>
+        </div>
+        <button class="notification-close">✕</button>
+    `;
+
+    document.body.appendChild(notification);
+
+    // Show animation
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            notification.classList.add('show');
+        });
+    });
+
+    const closeButton = notification.querySelector('.notification-close');
+    
+    const hideNotification = () => {
+        notification.classList.remove('show');
+        // Wait for animation to finish before removing
+        notification.addEventListener('transitionend', () => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, { once: true });
+        // Fallback if transitionend doesn't fire
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 500); // CSS transition süresiyle eşleşmeli (0.3s) + biraz pay
+    };
+
+    closeButton.addEventListener('click', hideNotification);
+
+    if (duration > 0) {
+        setTimeout(hideNotification, duration);
+    }
+
+    // Eski #message elementini gizle (artık kullanılmıyor)
+    const oldMessageElement = document.getElementById('message');
+    if (oldMessageElement) {
+        oldMessageElement.style.display = 'none';
+    }
+}
+
 async function loadSavedPlans(){try{const r=await fetch('/api/plans');if(!r.ok)throw new Error('Kaydedilmiş planlar yüklenemedi.');const plans=await r.json();const cont=document.getElementById('savedPlansListContainer');if(!cont)return;cont.innerHTML='';if(plans.length===0){cont.innerHTML='<p>Kaydedilmiş plan bulunmuyor.</p>';return;}const ul=document.createElement('ul');ul.className='saved-plan-items-list';plans.forEach(p=>{const li=document.createElement('li');li.className='saved-plan-item';const info=document.createElement('span');info.textContent=`${p.plan_name} (${p.ders||'Bilinmeyen'} - ${p.sinif||'Bilinmeyen'})`;const btns=document.createElement('div');btns.className='saved-plan-buttons';const loadBtn=document.createElement('button');loadBtn.type='button';loadBtn.textContent='Yükle';loadBtn.onclick=()=>loadSpecificPlan(p.id);const dlBtn=document.createElement('button');dlBtn.type='button';dlBtn.textContent='İndir';dlBtn.className='download-saved-btn';dlBtn.onclick=()=>generatePlanForSaved(p.id);const delBtn=document.createElement('button');delBtn.type='button';delBtn.textContent='Sil';delBtn.className='delete-btn';delBtn.onclick=()=>deletePlan(p.id);btns.appendChild(loadBtn);btns.appendChild(dlBtn);btns.appendChild(delBtn);li.appendChild(info);li.appendChild(btns);ul.appendChild(li);});cont.appendChild(ul);}catch(e){showMessage(`❌ Kayıtlı planlar yüklenemedi: ${e.message}`,'error');}}
 async function deletePlan(id){if(!confirm("Bu planı sil?"))return;try{const r=await fetch(`/api/plans/${id}`,{method:'DELETE'});if(!r.ok){const res=await r.json();throw new Error(res.error||'Silinemedi.');}showMessage('Plan silindi.','success');loadSavedPlans();}catch(e){showMessage(`❌ Plan silinemedi: ${e.message}`,'error');}}
 async function generatePlanForSaved(id){showMessage('Kaydedilmiş plan hazırlanıyor...','success');const loadEl=document.getElementById('loading');if(loadEl)loadEl.style.display='block';try{const planR=await fetch(`/api/plans/${id}`);if(!planR.ok)throw new Error('Plan verisi alınamadı.');const planData=await planR.json();const docData={okul:planData.okul,ogretmen:planData.ogretmen,ders:planData.ders,sinif:planData.sinif,egitimOgretimYili:planData.egitim_ogretim_yili,dersSaati:planData.ders_saati,haftalikPlan:planData.plan_data_json||[],additionalTeachers:planData.additional_teachers_json||[]};const docR=await fetch('/generate-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(docData)});if(docR.ok){const blob=await docR.blob();const url=window.URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`yillik_plan_${planData.plan_name.replace(/[^a-zA-Z0-9]/g,'_')}.docx`;a.click();window.URL.revokeObjectURL(url);showMessage('Plan indirildi!','success');}else{const errD=await docR.json().catch(()=>({message:'Word oluşturulamadı'}));throw new Error(errD.error||errD.message);}}catch(e){showMessage(`❌ Plan indirilemedi: ${e.message}`,'error');}finally{if(loadEl)loadEl.style.display='none';}}
@@ -369,10 +445,45 @@ document.addEventListener('DOMContentLoaded',async function(){
         const el=document.getElementById(id);
         if(el){
             const eventType=el.tagName==='SELECT'?'change':'input';
-            el.addEventListener(eventType,()=>{
+            el.addEventListener(eventType, async ()=>{ // async eklendi
                 updateYillikPlanBasligi();
-                if(id==='egitimOgretimYiliSidebar'||id==='baslangicHaftasiSidebar') setDefaultBaslangicHaftasi();
-                else updateAllWeekDates();
+                if(id==='egitimOgretimYiliSidebar'||id==='baslangicHaftasiSidebar') {
+                    setDefaultBaslangicHaftasi();
+                    // Eğitim öğretim yılı değiştiğinde tatilleri kontrol et/üret
+                    if (id === 'egitimOgretimYiliSidebar') {
+                        const selectedEgitimYili = el.value;
+                        if (selectedEgitimYili && typeof selectedEgitimYili === 'string') {
+                            const yearParts = selectedEgitimYili.split('-');
+                            if (yearParts.length > 0 && !isNaN(parseInt(yearParts[0], 10))) {
+                                const academicYearStart = parseInt(yearParts[0], 10);
+                                console.log(`Eğitim yılı değişti, ${academicYearStart} için tatil kontrolü yapılacak.`);
+                                try {
+                                    const response = await fetch('/api/ensure-holidays-for-year', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ academicYearStart })
+                                    });
+                                    if (response.ok) {
+                                        const result = await response.json();
+                                        console.log(result.message);
+                                        // İsteğe bağlı: Kullanıcıya başarılı bir mesaj gösterilebilir
+                                        // showMessage(result.message, "info");
+                                    } else {
+                                        const errorResult = await response.json().catch(() => ({ error: "Sunucu hatası" }));
+                                        console.error(`Tatil kontrolü/üretimi hatası (${response.status}):`, errorResult.error);
+                                        // İsteğe bağlı: Kullanıcıya bir hata mesajı gösterilebilir
+                                        // showMessage(`Tatil üretimi hatası: ${errorResult.error}`, "error");
+                                    }
+                                } catch (error) {
+                                    console.error('Tatil kontrolü/üretimi sırasında ağ hatası:', error);
+                                    // showMessage("Tatil üretimi sırasında ağ hatası.", "error");
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    updateAllWeekDates();
+                }
             });
         }
     });
