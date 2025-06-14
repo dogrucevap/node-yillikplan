@@ -116,8 +116,21 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
         unvan TEXT NOT NULL
       )`, (err) => {
         if (err) console.error("Ogretmenler tablosu oluşturma hatası:", err.message);
+        // insertDemoDataIfNeeded buradaydı, users tablosu oluşturulduktan sonra çağrılacak
+      });
+
+      db.run(`CREATE TABLE IF NOT EXISTS users (
+        google_id TEXT PRIMARY KEY,
+        display_name TEXT,
+        email TEXT UNIQUE,
+        profile_photo_url TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`, (err) => {
+        if (err) console.error("Users tablosu oluşturma hatası:", err.message);
         else {
-          insertDemoDataIfNeeded();
+          // ogretmenler ve users tabloları oluşturulduktan sonra demo veriyi yükle
+          insertDemoDataIfNeeded(); 
         }
       });
     });
@@ -275,24 +288,53 @@ passport.use(new GoogleStrategy({
     callbackURL: "/auth/google/callback" 
   },
   function(accessToken, refreshToken, profile, cb) {
-    const userName = profile.displayName;
-    if (userName) {
-      db.get("SELECT id, ad_soyad, unvan FROM ogretmenler WHERE ad_soyad = ?", [userName], (err, row) => {
-        if (err) return cb(err, profile); 
-        if (!row) {
-          const stmt = db.prepare("INSERT INTO ogretmenler (ad_soyad, unvan) VALUES (?, ?)");
-          stmt.run(userName, "Öğretmen", function(insertErr) {
-            if (insertErr) return cb(null, profile);
-            return cb(null, profile);
-          });
-          stmt.finalize(); 
-        } else {
-          return cb(null, profile); 
+    const googleId = profile.id;
+    const displayName = profile.displayName;
+    const email = profile.emails && profile.emails.length > 0 ? profile.emails[0].value : null;
+    const photoUrl = profile.photos && profile.photos.length > 0 ? profile.photos[0].value : null;
+
+    // 1. Users tablosuna ekle/güncelle
+    db.run(`INSERT INTO users (google_id, display_name, email, profile_photo_url, updated_at) 
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(google_id) DO UPDATE SET
+            display_name = excluded.display_name,
+            email = excluded.email,
+            profile_photo_url = excluded.profile_photo_url,
+            updated_at = CURRENT_TIMESTAMP`,
+      [googleId, displayName, email, photoUrl],
+      function(err) {
+        if (err) {
+          console.error("Users tablosuna ekleme/güncelleme hatası:", err.message);
+          // Hata olsa bile öğretmen ekleme adımına devam et ve profili döndür
         }
-      });
-    } else {
-      return cb(null, profile); 
-    }
+        
+        // 2. Mevcut ogretmenler tablosuna ekleme mantığı (displayName varsa)
+        if (displayName) {
+          db.get("SELECT id FROM ogretmenler WHERE ad_soyad = ?", [displayName], (errOgretmen, rowOgretmen) => {
+            if (errOgretmen) {
+              console.error("Ogretmenler tablosu okuma hatası:", errOgretmen.message);
+              return cb(errOgretmen, profile); // Hata varsa passport'a bildir
+            }
+            if (!rowOgretmen) {
+              const stmtOgretmen = db.prepare("INSERT INTO ogretmenler (ad_soyad, unvan) VALUES (?, ?)");
+              stmtOgretmen.run(displayName, "Öğretmen", function(insertErrOgretmen) {
+                if (insertErrOgretmen) {
+                  console.error("Ogretmenler tablosuna ekleme hatası:", insertErrOgretmen.message);
+                  // Hata olsa bile profili döndür, kullanıcı girişi engellenmesin
+                }
+                stmtOgretmen.finalize();
+                return cb(null, profile); // Her durumda profili döndür
+              });
+            } else {
+              return cb(null, profile); // Öğretmen zaten var, profili döndür
+            }
+          });
+        } else {
+          // displayName yoksa öğretmen ekleme adımını atla, sadece profili döndür
+          return cb(null, profile);
+        }
+      }
+    );
   }
 ));
 
