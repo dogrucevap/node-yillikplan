@@ -1,3 +1,25 @@
+// app.js - v2 İÇİN GÜNCELLENMİŞ KOD
+
+const SUPABASE_URL = 'https://qireaxrpyecqgymuhkxy.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpcmVheHJweWVjcWd5bXVoa3h5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5ODc5NTUsImV4cCI6MjA2NTU2Mzk1NX0.jMYJdd04qPI2boTWulTgNYMYfJYOcYs_Vz_rj7HC-Ww';
+
+// Global 'supabase' nesnesi ile çakışmaması için kendi istemci değişkenimize farklı bir isim verelim.
+let supabaseClient = null; 
+
+try {
+  // Kontrol etmemiz gereken global nesne 'supabase', 'supabaseJs' değil.
+  if (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_ANON_KEY) {
+    // Global 'supabase' nesnesindeki 'createClient' fonksiyonunu kullan.
+    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('Supabase client (app.js) başarıyla başlatıldı.');
+  } else {
+    console.error('Supabase istemcisi yüklenemedi. Global "supabase" nesnesi bulunamadı veya anahtarlar eksik.');
+  }
+} catch (e) {
+  console.error('Supabase client (app.js) başlatılırken hata:', e);
+}
+
+
 const settingsSidebar = document.getElementById('settingsSidebar');
 const sidebarMainTitle = document.getElementById('sidebarMainTitle');
 const sidebarGlobalBackBtn = document.getElementById('sidebarGlobalBackBtn');
@@ -43,45 +65,114 @@ function updateYillikPlanBasligi() {
     if (baslikElement) baslikElement.textContent = `T.C. MİLLİ EĞİTİM BAKANLIĞI ${okulAdi.toUpperCase()} ${egitimYili} EĞİTİM ÖĞRETİM YILI ${dersAdi.toUpperCase()} ${sinif.toUpperCase()} DERSİ ÜNİTELENDİRİLMİŞ YILLIK PLANI`;
 }
 
+async function handleGoogleLogin() {
+    try {
+        // ÇÖZÜM: signInWithOAuth fonksiyonu .auth üzerinden çağrılmalı
+        const { data, error } = await supabaseClient.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: window.location.origin // Google'dan sonra geri dönülecek adres
+            }
+        });
+
+        if (error) {
+            console.error('Google ile giriş sırasında hata:', error);
+            // Kullanıcıya bir hata mesajı gösterebilirsiniz.
+        } else {
+            console.log('Google ile giriş için yönlendiriliyor...', data);
+        }
+    } catch (error) {
+        console.error('handleGoogleLogin içinde beklenmedik hata:', error);
+    }
+}
+
+async function handleLogout() {
+    if (!supabase) {
+        showMessage("Supabase yapılandırılmamış, çıkış yapılamıyor.", "error");
+        console.warn("Supabase client başlatılmamış. Çıkış yapılamıyor.");
+        return;
+    }
+    try {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+            console.error('Çıkış hatası:', error);
+            showMessage(`Çıkış yapılamadı: ${error.message}`, "error");
+        } else {
+            showMessage('Başarıyla çıkış yapıldı.', 'success');
+            // UI güncellemesi onAuthStateChange tarafından tetiklenecek
+        }
+    } catch (e) {
+        console.error('handleLogout içinde beklenmedik hata:', e);
+        showMessage(`Çıkış sırasında bir hata oluştu. Lütfen konsolu kontrol edin.`, "error");
+    }
+}
+
 async function checkAuthStatus() {
     const userAuthSection = document.getElementById('userAuthSection');
     if (!userAuthSection) return;
+
+    if (!supabase) {
+        userAuthSection.innerHTML = '<span style="color:red;">Supabase istemcisi yüklenemedi. Lütfen app.js dosyasındaki SUPABASE_URL ve SUPABASE_ANON_KEY değerlerini ve index.html dosyasındaki Supabase SDK scriptini kontrol edin.</span>';
+        return;
+    }
+
     try {
-        const response = await fetch('/api/auth/status');
-        if (!response.ok) {
-            userAuthSection.innerHTML = '<a href="/auth/google" class="auth-link login-link">Google ile Giriş Yap</a>';
-            return;
-        }
+        // Sunucu tarafındaki /api/auth/session endpoint'inden oturum bilgisini al
+        const response = await fetch('/api/auth/session'); 
         const authData = await response.json();
-        if (authData.isAuthenticated && authData.user) {
+
+        if (response.ok && authData.isAuthenticated && authData.user) {
             let userInfoHTML = '';
             if (authData.user.photo) userInfoHTML += `<img src="${authData.user.photo}" alt="${authData.user.displayName}" class="user-avatar"> `;
             userInfoHTML += `<span class="user-name">${authData.user.displayName || 'Kullanıcı'}</span>`;
             if (authData.user.email) userInfoHTML += ` <span class="user-email">(${authData.user.email})</span>`;
-            userInfoHTML += ` | <a href="/auth/logout" class="auth-link logout-link">Çıkış Yap</a>`;
+            userInfoHTML += ` | <button id="logoutBtn" class="auth-link logout-link">Çıkış Yap</button>`;
             userAuthSection.innerHTML = userInfoHTML;
+            document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
+
             window.currentUser = authData.user;
-            if (authData.user.displayName) {
-                await loadAllPersonal();
-                const loggedInUserName = authData.user.displayName;
-                const foundTeacher = tumPersonalListesi.find(p => p.name === loggedInUserName && (p.branch === "Öğretmen" || !p.isMudur));
-                if (foundTeacher && !planaEklenenPersonal.some(p => p.id === foundTeacher.id && !p.isMudur)) {
-                    planaEklenenPersonal = planaEklenenPersonal.filter(p => p.isMudur);
-                    planaEklenenPersonal.push({ ...foundTeacher, isMudur: false });
-                    sortAndRenderImzaAlani();
-                    showMessage(`Hoş geldiniz ${loggedInUserName}! Planda varsayılan öğretmen olarak ayarlandınız.`, "success");
-                }
-            }
+            // Öğretmen atama mantığı, loadAllPersonal Supabase'e göre güncellendikten sonra ele alınacak
+            // if (authData.user.displayName) {
+            //     await loadAllPersonal(); 
+            //     const loggedInUserName = authData.user.displayName;
+            //     const foundTeacher = tumPersonalListesi.find(p => p.name === loggedInUserName && (p.branch === "Öğretmen" || !p.isMudur));
+            //     if (foundTeacher && !planaEklenenPersonal.some(p => p.id === foundTeacher.id && !p.isMudur)) {
+            //         planaEklenenPersonal = planaEklenenPersonal.filter(p => p.isMudur);
+            //         planaEklenenPersonal.push({ ...foundTeacher, isMudur: false });
+            //         sortAndRenderImzaAlani();
+            //         showMessage(`Hoş geldiniz ${loggedInUserName}! Planda varsayılan öğretmen olarak ayarlandınız.`, "success");
+            //     }
+            // }
         } else {
-            userAuthSection.innerHTML = '<a href="/auth/google" class="auth-link login-link">Google ile Giriş Yap</a>';
+            userAuthSection.innerHTML = '<button id="googleLoginBtn" class="auth-link login-link">Google ile Giriş Yap</button>';
+            document.getElementById('googleLoginBtn')?.addEventListener('click', handleGoogleLogin);
+            window.currentUser = null;
         }
     } catch (error) {
-        console.error('Kimlik doğrulama hatası:', error);
-        userAuthSection.innerHTML = '<a href="/auth/google" class="auth-link login-link">Google ile Giriş Yap (Hata)</a>';
+        console.error('Kimlik doğrulama durumu alınırken hata:', error);
+        userAuthSection.innerHTML = '<button id="googleLoginBtn" class="auth-link login-link">Google ile Giriş Yap (Hata)</button>';
+        document.getElementById('googleLoginBtn')?.addEventListener('click', handleGoogleLogin);
+        window.currentUser = null;
     }
 }
 
-async function navigateToView(targetViewId) { // Fonksiyonu async yap
+// Supabase auth state değişikliklerini dinle
+if (supabaseClient) {
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
+        console.log('Supabase Auth Event:', event, session);
+        // Oturum durumu değiştiğinde UI'ı yeniden kontrol et ve güncelle
+        await checkAuthStatus(); 
+        
+        if (event === 'SIGNED_IN' && session) {
+            console.log('Kullanıcı giriş yaptı:', session.user.email);
+        } else if (event === 'SIGNED_OUT') {
+            console.log('Kullanıcı çıkış yaptı.');
+        }
+    });
+}
+
+
+async function navigateToView(targetViewId) { 
     const views = document.querySelectorAll('.sidebar-view');
     const targetView = document.getElementById(targetViewId);
     const currentActiveViewElement = document.getElementById(currentSidebarView);
@@ -109,12 +200,12 @@ async function navigateToView(targetViewId) { // Fonksiyonu async yap
             case 'mainMenuView': newTitleText = 'Ayarlar'; showBackBtn = false; break;
             case 'aracGerecView': 
                 newTitleText = 'Araç-Gereç Yönetimi'; 
-                await loadAllAracGerecTipleri(); // Verileri await ile yeniden yükle
+                await loadAllAracGerecTipleri(); 
                 break;
             case 'dersSaatiView': newTitleText = 'Ders Saati Yönetimi'; break;
             case 'yontemTeknikView': 
                 newTitleText = 'Yöntem ve Teknik Yönetimi'; 
-                await loadAllYontemTeknikTipleri(); // Verileri await ile yeniden yükle
+                await loadAllYontemTeknikTipleri(); 
                 break;
             case 'okulMuduruView': newTitleText = 'Okul Müdürü Yönetimi'; break;
             case 'ogretmenYonetimiView': newTitleText = 'Öğretmen Yönetimi'; break;
@@ -145,7 +236,7 @@ async function navigateToView(targetViewId) { // Fonksiyonu async yap
 function getThirdMondayWeekInSeptember(year) {
     let mondayCount = 0; let thirdMondayDate = null;
     for (let day = 1; day <= 30; day++) {
-        const date = new Date(year, 8, day); // September is month 8
+        const date = new Date(year, 8, day); 
         if (date.getDay() === 1) { mondayCount++; if (mondayCount === 3) { thirdMondayDate = date; break; } }
     }
     if (thirdMondayDate) {
@@ -235,10 +326,13 @@ let planaEklenenPersonal = [];
 const TATIL_DONEMLERI = { ARA_TATIL_1: { duration: 1, afterAcademicWeek: 9, label: "1. Ara Tatil" }, YARIYIL_TATILI: { duration: 2, afterAcademicWeek: 18, label: "Yarıyıl Tatili" }, ARA_TATIL_2: { duration: 1, afterAcademicWeek: 27, label: "2. Ara Tatil" }};
 const TOPLAM_AKADEMIK_HAFTA = 36; let draggedItemIndex = null;
 
+// Bu fonksiyonlar artık Supabase SDK'sını kullanacak şekilde güncellenmeli
+// veya server.js'deki API'lar Supabase'i kullanacak ve bu fonksiyonlar o API'ları çağıracak.
 async function loadResourceList(apiUrl, listVarName, populateFn, defaultList = []) {
-    console.log(`[loadResourceList] Fetching ${listVarName} from ${apiUrl}...`);
+    console.log(`[loadResourceList] Fetching ${listVarName} from ${apiUrl}... (Supabase'e güncellenecek)`);
+    // Örnek: if (supabase) { const { data, error } = await supabase.from('tablo_adi').select('*'); ... }
     try {
-        const r = await fetch(apiUrl);
+        const r = await fetch(apiUrl); // Bu fetch'ler Supabase çağrıları ile değişecek
         if (!r.ok) {
             const errorText = await r.text();
             console.error(`[loadResourceList] API call to ${apiUrl} FAILED with status ${r.status}. Response: ${errorText}`);
@@ -249,10 +343,9 @@ async function loadResourceList(apiUrl, listVarName, populateFn, defaultList = [
     } catch (e) {
         console.error(`[loadResourceList] Error loading or parsing ${listVarName} from ${apiUrl}:`, e);
         showMessage(`"${listVarName.replace('tum', '').replace('Listesi', '')}" listesi yüklenemedi. Hata: ${e.message}`, 'error');
-        window[listVarName] = []; // Hata durumunda boş liste ata, defaultList yerine.
+        window[listVarName] = []; 
     }
     try {
-        console.log(`[loadResourceList] Calling populateFn for ${listVarName}.`);
         populateFn();
     } catch (e) {
         console.error(`[loadResourceList] Error in populateFn for ${listVarName} (data source: ${apiUrl}):`, e);
@@ -266,13 +359,10 @@ function populateSidebarGenericList(containerId, items, selectedGetter, clickHan
         console.error(`[populateSidebarGenericList] Container not found: ${containerId}`);
         return;
     }
-    console.log(`[populateSidebarGenericList] Populating ${containerId} with ${items ? items.length : 0} items.`);
     cont.innerHTML = '';
     const selItems = selectedGetter ? selectedGetter() : [];
-    // items'ın bir dizi olduğundan ve her öğenin nameField'a sahip olduğundan emin ol
     if (!Array.isArray(items)) {
-        console.error(`[populateSidebarGenericList] items is not an array for ${containerId}. Got:`, items);
-        items = []; // Hata durumunda boş dizi ata
+        items = [];
     }
     items.sort((a, b) => ((a && a[nameField]) || '').localeCompare((b && b[nameField]) || '')).forEach(item => {
         if (!item || typeof item[nameField] === 'undefined') {
@@ -294,17 +384,41 @@ function populateSidebarGenericList(containerId, items, selectedGetter, clickHan
 }
 
 async function addCustomGenericItem(inputId, apiUrl, listVarName, loadFn, itemTypeTR) {
+    // Bu fonksiyon Supabase'e göre güncellenmeli
     const input = document.getElementById(inputId); if (!input) return;
     const name = input.value.trim();
     if (!name) { showMessage(`Lütfen ${itemTypeTR} adı girin.`, "error"); return; }
-    if (window[listVarName].some(i => i.name === name)) { showMessage(`"${name}" zaten listede.`, 'error'); return; }
+    // if (window[listVarName].some(i => i.name === name)) { showMessage(`"${name}" zaten listede.`, 'error'); return; }
     try {
-        const r = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+        const fetchHeaders = { 'Content-Type': 'application/json' };
+        if (supabaseClient) {
+            const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+            if (sessionError) {
+                console.error(`[${itemTypeTR}] Oturum alınırken hata:`, sessionError);
+                showMessage("Oturum bilgisi alınamadı. Lütfen tekrar giriş yapın.", "error");
+                return;
+            }
+            if (session && session.access_token) {
+                fetchHeaders['Authorization'] = `Bearer ${session.access_token}`;
+            } else {
+                console.warn(`[${itemTypeTR}] Oturum veya erişim token'ı bulunamadı.`);
+                showMessage("Giriş yapılmamış veya oturum süresi dolmuş. Lütfen giriş yapın.", "error");
+                return;
+            }
+        } else {
+            console.error(`[${itemTypeTR}] Supabase client bulunamadı.`);
+            showMessage("Supabase istemcisi yüklenemedi.", "error");
+            return;
+        }
+        const r = await fetch(apiUrl, { method: 'POST', headers: fetchHeaders, body: JSON.stringify({ name }) });
         const res = await r.json();
-        if (!r.ok) throw new Error(res.error || 'Sunucu hatası');
+        if (!r.ok) {
+            console.error(`[${itemTypeTR}] API Hatası ${r.status}:`, res);
+            throw new Error(res.error || `Sunucu ${r.status} koduyla yanıt verdi.`);
+        }
         await loadFn(); 
         input.value = '';
-        showMessage(`"${res.name || name}" eklendi. ID: ${res.id}`, 'success'); // Sunucudan gelen ID'yi göster
+        showMessage(`"${res.name || name}" eklendi. ID: ${res.id}`, 'success');
     } catch (e) {
         console.error(`Yeni ${itemTypeTR} ekleme hatası:`, e);
         showMessage(`❌ ${itemTypeTR} eklenemedi: ${e.message}`, 'error');
@@ -312,12 +426,36 @@ async function addCustomGenericItem(inputId, apiUrl, listVarName, loadFn, itemTy
 }
 
 async function deleteGenericItem(item, apiUrl, confirmMsg, successMsg, errorMsgPrefix, loadFn, nameField = 'name') {
+    // Bu fonksiyon Supabase'e göre güncellenmeli
     const name = typeof item === 'object' ? item[nameField] : item;
     if (!confirm(confirmMsg.replace('%s', name))) return;
     try {
-        const r = await fetch(`${apiUrl}/${encodeURIComponent(name)}`, { method: 'DELETE' });
+        const fetchHeaders = { 'Content-Type': 'application/json' };
+        if (supabaseClient) {
+            const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+            if (sessionError) {
+                console.error(`[${errorMsgPrefix}] Oturum alınırken hata:`, sessionError);
+                showMessage("Oturum bilgisi alınamadı. Lütfen tekrar giriş yapın.", "error");
+                return;
+            }
+            if (session && session.access_token) {
+                fetchHeaders['Authorization'] = `Bearer ${session.access_token}`;
+            } else {
+                console.warn(`[${errorMsgPrefix}] Oturum veya erişim token'ı bulunamadı.`);
+                showMessage("Giriş yapılmamış veya oturum süresi dolmuş. Lütfen giriş yapın.", "error");
+                return;
+            }
+        } else {
+            console.error(`[${errorMsgPrefix}] Supabase client bulunamadı.`);
+            showMessage("Supabase istemcisi yüklenemedi.", "error");
+            return;
+        }
+        const r = await fetch(`${apiUrl}/${encodeURIComponent(name)}`, { method: 'DELETE', headers: fetchHeaders });
         const res = await r.json();
-        if (!r.ok) throw new Error(res.error || 'Silinemedi');
+        if (!r.ok) {
+            console.error(`[${errorMsgPrefix}] API Hatası ${r.status}:`, res);
+            throw new Error(res.error || `Sunucu ${r.status} koduyla yanıt verdi.`);
+        }
         showMessage(successMsg.replace('%s', name), 'success');
         await loadFn();
     } catch (e) {
@@ -339,61 +477,40 @@ async function deleteYontemTeknikTipi(name) { await deleteGenericItem({name: nam
 function getSelectedSidebarYontemTeknik() { const s = []; document.querySelectorAll('#sidebarYontemTeknikList .item-button.selected').forEach(b => s.push(b.dataset.value)); return s; }
 
 function applySidebarSelectionToAction(actionType, getter, itemTR, field) {
-    console.log(`[applySidebarSelectionToAction] Action: ${actionType}, Item Type: ${itemTR}, Field: ${field}`);
     const items = getter();
-    console.log(`[applySidebarSelectionToAction] Selected items from sidebar:`, items);
-
     if (items.length === 0 && (actionType.includes('esitle') || actionType.includes('ekle'))) {
         showMessage(`Kenar çubuğundan ${itemTR} seçin.`, "error");
-        console.log(`[applySidebarSelectionToAction] No items selected from sidebar for 'esitle' or 'ekle' action.`);
         return;
     }
-
     const weekChecks = document.querySelectorAll('#haftaContainer .week-checkbox:checked:not(:disabled)');
     const weekNums = Array.from(weekChecks).map(cb => parseInt(cb.id.split('-')[1])).filter(id => !isNaN(id));
-    console.log(`[applySidebarSelectionToAction] Selected week numbers from plan:`, weekNums);
-
     if (actionType.includes('Secili') && weekNums.length === 0) {
         showMessage("Yıllık plandan hafta seçin.", "error");
-        console.log(`[applySidebarSelectionToAction] No weeks selected from plan for 'Secili' action.`);
         return;
     }
-
     let changed = false;
     baseAcademicPlan.forEach(bh => {
         const target = actionType.includes('Tum') || (actionType.includes('Secili') && weekNums.includes(bh.originalAcademicWeek));
         if (target) {
             changed = true;
             if (actionType.startsWith('esitle')) {
-                console.log(`[applySidebarSelectionToAction] Equaling week ${bh.originalAcademicWeek} ${field} to:`, items);
                 bh[field] = [...items];
             } else if (actionType.startsWith('ekle')) {
                 bh[field] = bh[field] || [];
-                items.forEach(i => {
-                    if (!bh[field].includes(i)) {
-                        bh[field].push(i);
-                    }
-                });
-                console.log(`[applySidebarSelectionToAction] Adding to week ${bh.originalAcademicWeek} ${field}. New ${field}:`, bh[field]);
+                items.forEach(i => { if (!bh[field].includes(i)) bh[field].push(i); });
             }
         }
     });
-
     yillikPlan.forEach(ph => {
         if (ph.type === 'academic') {
             const base = baseAcademicPlan.find(b => b.originalAcademicWeek === ph.originalAcademicWeek);
-            if (base) {
-                ph[field] = [...(base[field] || [])];
-            }
+            if (base) ph[field] = [...(base[field] || [])];
         }
     });
-
     if (changed) {
-        console.log(`[applySidebarSelectionToAction] Plan changed. Calling renderYillikPlan().`);
         renderYillikPlan();
         showMessage(`${itemTR.charAt(0).toUpperCase() + itemTR.slice(1)} güncellendi.`, "success");
     } else {
-        console.log(`[applySidebarSelectionToAction] No changes made to the plan.`);
         showMessage("Değişiklik yapılmadı.", "info");
     }
 }
@@ -401,8 +518,10 @@ function applyAracGerecAction(type){applySidebarSelectionToAction(type,getSelect
 function applyYontemTeknikAction(type){applySidebarSelectionToAction(type,getSelectedSidebarYontemTeknik,'yöntem/teknik','yontemTeknik');}
 
 async function loadAllPersonal(){
+    // Bu fonksiyon Supabase'den veri çekecek şekilde güncellenmeli
     try{
-        const r=await fetch('/api/ogretmenler');
+        // Örnek: if(supabase) { const { data, error } = await supabase.from('ogretmenler').select('*'); ... }
+        const r=await fetch('/api/ogretmenler'); // Bu API endpoint'i Supabase'e göre güncellenmeli
         if(!r.ok)throw new Error('Personel yüklenemedi.');
         const d=await r.json();
         tumPersonalListesi=Array.isArray(d)?d.map(o=>({id:o.id,name:o.ad_soyad,branch:o.unvan,isMudur:o.unvan?.toLowerCase().includes('müdür')||false})):[];
@@ -442,11 +561,36 @@ function populateSidebarMudurList() {
 }
 
 async function addCustomMudur() {
+    // Bu fonksiyon Supabase'e göre güncellenmeli
     const input = document.getElementById('customMudurInput'); if (!input) return;
     const name = input.value.trim(); if (!name) { showMessage("Lütfen müdürün adını ve soyadını girin.", "error"); return; }
     try {
-        const response = await fetch('/api/ogretmenler', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ad_soyad: name, unvan: "Okul Müdürü" }) });
-        const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Sunucu hatası');
+        const fetchHeaders = { 'Content-Type': 'application/json' };
+        if (supabaseClient) {
+            const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+            if (sessionError) {
+                console.error("[Müdür Ekleme] Oturum alınırken hata:", sessionError);
+                showMessage("Oturum bilgisi alınamadı. Lütfen tekrar giriş yapın.", "error");
+                return;
+            }
+            if (session && session.access_token) {
+                fetchHeaders['Authorization'] = `Bearer ${session.access_token}`;
+            } else {
+                console.warn("[Müdür Ekleme] Oturum veya erişim token'ı bulunamadı.");
+                showMessage("Giriş yapılmamış veya oturum süresi dolmuş. Lütfen giriş yapın.", "error");
+                return;
+            }
+        } else {
+            console.error("[Müdür Ekleme] Supabase client bulunamadı.");
+            showMessage("Supabase istemcisi yüklenemedi.", "error");
+            return;
+        }
+        const response = await fetch('/api/ogretmenler', { method: 'POST', headers: fetchHeaders, body: JSON.stringify({ ad_soyad: name, unvan: "Okul Müdürü" }) });
+        const result = await response.json(); 
+        if (!response.ok) {
+            console.error(`[Müdür Ekleme] API Hatası ${response.status}:`, result);
+            throw new Error(result.error || `Sunucu ${response.status} koduyla yanıt verdi.`);
+        }
         await loadAllPersonal(); input.value = ''; showMessage(`"${name}" (Okul Müdürü) başarıyla eklendi.`, 'success');
         const newMudur = tumPersonalListesi.find(p => p.name === name && p.isMudur);
         if (newMudur) {
@@ -506,23 +650,84 @@ function navigateToOgretmenDetayView(ogretmenId, ogretmenAdi, mevcutBrans = '') 
 }
 
 async function saveOgretmenDetay() {
+    // Bu fonksiyon Supabase'e göre güncellenmeli
     const ogretmenId = document.getElementById('currentEditingOgretmenId').value;
     const adSoyad = document.getElementById('currentEditingOgretmenNameForTitle').value; 
     const brans = document.getElementById('editingOgretmenBransInput').value.trim();
     if (!adSoyad && !ogretmenId) { showMessage("Öğretmen adı alınamadı.", "error"); return; }
     if (!brans) { showMessage("Lütfen öğretmenin branşını girin.", "error"); return; }
     if (brans.toLowerCase().includes("müdür")) { showMessage("Öğretmen branşı 'müdür' içeremez.", "warning"); return; }
-    const apiUrl = ogretmenId ? `/api/ogretmenler/${ogretmenId}` : '/api/ogretmenler';
+    const apiUrl = ogretmenId ? `/api/ogretmenler/${ogretmenId}` : '/api/ogretmenler'; // Bu API endpoint'i Supabase'e göre güncellenmeli
     const method = ogretmenId ? 'PUT' : 'POST';
     try {
-        const response = await fetch(apiUrl, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ad_soyad: adSoyad, unvan: brans }) });
-        const result = await response.json(); if (!response.ok) throw new Error(result.error || `Sunucu hatası: ${response.status}`);
+        const fetchHeaders = { 'Content-Type': 'application/json' };
+        if (supabaseClient) {
+            const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+            if (sessionError) {
+                console.error("[Öğretmen Kaydet/Güncelle] Oturum alınırken hata:", sessionError);
+                showMessage("Oturum bilgisi alınamadı. Lütfen tekrar giriş yapın.", "error");
+                return;
+            }
+            if (session && session.access_token) {
+                fetchHeaders['Authorization'] = `Bearer ${session.access_token}`;
+            } else {
+                console.warn("[Öğretmen Kaydet/Güncelle] Oturum veya erişim token'ı bulunamadı.");
+                showMessage("Giriş yapılmamış veya oturum süresi dolmuş. Lütfen giriş yapın.", "error");
+                return;
+            }
+        } else {
+            console.error("[Öğretmen Kaydet/Güncelle] Supabase client bulunamadı.");
+            showMessage("Supabase istemcisi yüklenemedi.", "error");
+            return;
+        }
+        const response = await fetch(apiUrl, { method: method, headers: fetchHeaders, body: JSON.stringify({ ad_soyad: adSoyad, unvan: brans }) });
+        const result = await response.json(); 
+        if (!response.ok) {
+            console.error(`[Öğretmen Kaydet/Güncelle] API Hatası ${response.status}:`, result);
+            throw new Error(result.error || `Sunucu ${response.status} koduyla yanıt verdi.`);
+        }
         showMessage(result.message || `Öğretmen başarıyla ${ogretmenId ? 'güncellendi' : 'eklendi'}.`, 'success');
         await loadAllPersonal(); navigateToView('ogretmenYonetimiView');
     } catch (error) { console.error("Öğretmen kaydetme/güncelleme hatası:", error); showMessage(`❌ Öğretmen kaydedilemedi/güncellenemedi: ${error.message}`, 'error'); }
 }
 
-async function deletePersonal(id,name,isMudur){const type=isMudur?"müdürü":"öğretmeni";if(!confirm(`"${name}" adlı ${type} silinsin mi? Bu işlem geri alınamaz.`))return;try{const r=await fetch(`/api/ogretmenler/${id}`,{method:'DELETE'});const res=await r.json();if(!r.ok)throw new Error(res.error||'Silinemedi');showMessage(`"${name}" silindi.`,"success");await loadAllPersonal();planaEklenenPersonal=planaEklenenPersonal.filter(p=>p.id!==id);sortAndRenderImzaAlani();}catch(e){showMessage(`❌ ${type} silinemedi: ${e.message}`,"error");}}
+async function deletePersonal(id,name,isMudur){
+    // Bu fonksiyon Supabase'e göre güncellenmeli
+    const type=isMudur?"müdürü":"öğretmeni";
+    if(!confirm(`"${name}" adlı ${type} silinsin mi? Bu işlem geri alınamaz.`))return;
+    try{
+        const fetchHeaders = { 'Content-Type': 'application/json' };
+        if (supabaseClient) {
+            const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+            if (sessionError) {
+                console.error("[Personel Silme] Oturum alınırken hata:", sessionError);
+                showMessage("Oturum bilgisi alınamadı. Lütfen tekrar giriş yapın.", "error");
+                return;
+            }
+            if (session && session.access_token) {
+                fetchHeaders['Authorization'] = `Bearer ${session.access_token}`;
+            } else {
+                console.warn("[Personel Silme] Oturum veya erişim token'ı bulunamadı.");
+                showMessage("Giriş yapılmamış veya oturum süresi dolmuş. Lütfen giriş yapın.", "error");
+                return;
+            }
+        } else {
+            console.error("[Personel Silme] Supabase client bulunamadı.");
+            showMessage("Supabase istemcisi yüklenemedi.", "error");
+            return;
+        }
+        const r=await fetch(`/api/ogretmenler/${id}`,{method:'DELETE', headers: fetchHeaders}); // Bu API endpoint'i Supabase'e göre güncellenmeli
+        const res=await r.json();
+        if (!r.ok) {
+            console.error(`[Personel Silme] API Hatası ${r.status}:`, res);
+            throw new Error(res.error || `Sunucu ${r.status} koduyla yanıt verdi.`);
+        }
+        showMessage(`"${name}" silindi.`,"success");
+        await loadAllPersonal();
+        planaEklenenPersonal=planaEklenenPersonal.filter(p=>p.id!==id);
+        sortAndRenderImzaAlani();
+    }catch(e){showMessage(`❌ ${type} silinemedi: ${e.message}`,"error");}
+}
 function sortAndRenderImzaAlani(){planaEklenenPersonal.sort((a,b)=>(a.isMudur-b.isMudur)||(a.name||'').localeCompare(b.name||''));renderPlanImzalari();} 
 function getAdditionalTeachers(){return planaEklenenPersonal.map(p=>({name:p.name,branch:p.isMudur?"Okul Müdürü":p.branch,isPrincipal:p.isMudur}));}
 function renderPlanImzalari(){const cont=document.getElementById('planImzalariContainer');if(!cont)return;cont.innerHTML='';const ogretmenler=planaEklenenPersonal.filter(p=>!p.isMudur);const mudur=planaEklenenPersonal.find(p=>p.isMudur);ogretmenler.forEach(o=>addImzaAlaniToContainer(cont,o.name,o.branch));if(mudur)addImzaAlaniToContainer(cont,mudur.name,"Okul Müdürü");}
@@ -572,15 +777,139 @@ function showMessage(text, type = 'info', duration = 5000) {
     if (oldMessageElement) oldMessageElement.style.display = 'none';
 }
 
-async function loadSavedPlans(){try{const r=await fetch('/api/plans');if(!r.ok)throw new Error('Kaydedilmiş planlar yüklenemedi.');const plans=await r.json();const cont=document.getElementById('savedPlansListContainer');if(!cont)return;cont.innerHTML='';if(plans.length===0){cont.innerHTML='<p>Kaydedilmiş plan bulunmuyor.</p>';return;}const ul=document.createElement('ul');ul.className='saved-plan-items-list';plans.forEach(p=>{const li=document.createElement('li');li.className='saved-plan-item';const info=document.createElement('span');info.textContent=`${p.plan_name} (${p.ders||'Bilinmeyen'} - ${p.sinif||'Bilinmeyen'})`;const btns=document.createElement('div');btns.className='saved-plan-buttons';const loadBtn=document.createElement('button');loadBtn.type='button';loadBtn.textContent='Yükle';loadBtn.onclick=()=>loadSpecificPlan(p.id);const dlBtn=document.createElement('button');dlBtn.type='button';dlBtn.textContent='İndir';dlBtn.className='download-saved-btn';dlBtn.onclick=()=>generatePlanForSaved(p.id);const delBtn=document.createElement('button');delBtn.type='button';delBtn.textContent='Sil';delBtn.className='delete-btn';delBtn.onclick=()=>deletePlan(p.id);btns.appendChild(loadBtn);btns.appendChild(dlBtn);btns.appendChild(delBtn);li.appendChild(info);li.appendChild(btns);ul.appendChild(li);});cont.appendChild(ul);}catch(e){showMessage(`❌ Kayıtlı planlar yüklenemedi: ${e.message}`,'error');}}
-async function deletePlan(id){if(!confirm("Bu planı sil?"))return;try{const r=await fetch(`/api/plans/${id}`,{method:'DELETE'});if(!r.ok){const res=await r.json();throw new Error(res.error||'Silinemedi.');}showMessage('Plan silindi.','success');loadSavedPlans();}catch(e){showMessage(`❌ Plan silinemedi: ${e.message}`,'error');}}
-async function generatePlanForSaved(id){showMessage('Kaydedilmiş plan hazırlanıyor...','success');const loadEl=document.getElementById('loading');if(loadEl)loadEl.style.display='block';try{const planR=await fetch(`/api/plans/${id}`);if(!planR.ok)throw new Error('Plan verisi alınamadı.');const planData=await planR.json();const docData={okul:planData.okul,ogretmen:planData.ogretmen,ders:planData.ders,sinif:planData.sinif,egitimOgretimYili:planData.egitim_ogretim_yili,dersSaati:planData.ders_saati,haftalikPlan:planData.plan_data_json||[],additionalTeachers:planData.additional_teachers_json||[]};const docR=await fetch('/generate-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(docData)});if(docR.ok){const blob=await docR.blob();const url=window.URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`yillik_plan_${planData.plan_name.replace(/[^a-zA-Z0-9]/g,'_')}.docx`;a.click();window.URL.revokeObjectURL(url);showMessage('Plan indirildi!','success');}else{const errD=await docR.json().catch(()=>({message:'Word oluşturulamadı'}));throw new Error(errD.error||errD.message);}}catch(e){showMessage(`❌ Plan indirilemedi: ${e.message}`,'error');}finally{if(loadEl)loadEl.style.display='none';}}
+async function loadSavedPlans(){
+    // Bu fonksiyon Supabase'den veri çekecek şekilde güncellenmeli
+    try{
+        const headers = { 'Content-Type': 'application/json' };
+        if (supabaseClient) {
+            const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+            if (sessionError) {
+                console.error('Oturum alınırken hata:', sessionError);
+            } else if (session && session.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
+        }
+        
+        const r=await fetch('/api/plans', { headers }); // Bu API endpoint'i Supabase'e göre güncellenmeli
+        if (r.status === 401) {
+            showMessage('Kaydedilmiş planları yüklemek için lütfen giriş yapın.', 'warning');
+            // Kullanıcıyı giriş yapmaya yönlendirebilir veya giriş butonunu gösterebilirsiniz.
+            // Örneğin, checkAuthStatus() çağrılabilir veya özel bir UI güncellemesi yapılabilir.
+            const cont=document.getElementById('savedPlansListContainer');
+            if(cont) cont.innerHTML='<p>Kaydedilmiş planları görmek için lütfen giriş yapın.</p>';
+            return; 
+        }
+        if(!r.ok) {
+            const errorText = await r.text();
+            console.error(`Kaydedilmiş planlar yüklenemedi. Status: ${r.status}, Hata: ${errorText}`);
+            throw new Error(`Kaydedilmiş planlar yüklenemedi. Sunucu ${r.status} durum kodu ile yanıt verdi.`);
+        }
+        const plans=await r.json();
+        const cont=document.getElementById('savedPlansListContainer');
+        if(!cont)return;
+        cont.innerHTML='';
+        if(plans.length===0){cont.innerHTML='<p>Kaydedilmiş plan bulunmuyor.</p>';return;}
+        const ul=document.createElement('ul');
+        ul.className='saved-plan-items-list';
+        plans.forEach(p=>{
+            const li=document.createElement('li');li.className='saved-plan-item';
+            const info=document.createElement('span');info.textContent=`${p.plan_name} (${p.ders||'Bilinmeyen'} - ${p.sinif||'Bilinmeyen'})`;
+            const btns=document.createElement('div');btns.className='saved-plan-buttons';
+            const loadBtn=document.createElement('button');loadBtn.type='button';loadBtn.textContent='Yükle';loadBtn.onclick=()=>loadSpecificPlan(p.id);
+            const dlBtn=document.createElement('button');dlBtn.type='button';dlBtn.textContent='İndir';dlBtn.className='download-saved-btn';dlBtn.onclick=()=>generatePlanForSaved(p.id);
+            const delBtn=document.createElement('button');delBtn.type='button';delBtn.textContent='Sil';delBtn.className='delete-btn';delBtn.onclick=()=>deletePlan(p.id);
+            btns.appendChild(loadBtn);btns.appendChild(dlBtn);btns.appendChild(delBtn);
+            li.appendChild(info);li.appendChild(btns);ul.appendChild(li);
+        });
+        cont.appendChild(ul);
+    }catch(e){showMessage(`❌ Kayıtlı planlar yüklenemedi: ${e.message}`,'error');}
+}
+async function deletePlan(id){
+    // Bu fonksiyon Supabase'e göre güncellenmeli
+    if(!confirm("Bu planı sil?"))return;
+    try{
+        const headers = { 'Content-Type': 'application/json' };
+        if (supabaseClient) {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session && session.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
+        }
+        const r=await fetch(`/api/plans/${id}`,{method:'DELETE', headers}); // Bu API endpoint'i Supabase'e göre güncellenmeli
+        if(!r.ok){const res=await r.json();throw new Error(res.error||'Silinemedi.');}
+        showMessage('Plan silindi.','success');
+        loadSavedPlans();
+    }catch(e){showMessage(`❌ Plan silinemedi: ${e.message}`,'error');}
+}
+async function generatePlanForSaved(id){
+    // Bu fonksiyon Supabase'den veri çekecek şekilde güncellenmeli
+    showMessage('Kaydedilmiş plan hazırlanıyor...','success');
+    const loadEl=document.getElementById('loading');if(loadEl)loadEl.style.display='block';
+    try{
+        const headers = { 'Content-Type': 'application/json' };
+        if (supabaseClient) {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session && session.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
+        }
+        const planR=await fetch(`/api/plans/${id}`, { headers }); // Bu API endpoint'i Supabase'e göre güncellenmeli
+        if(!planR.ok)throw new Error('Plan verisi alınamadı.');
+        const planData=await planR.json();
+        const docData={okul:planData.okul,ogretmen:planData.ogretmen,ders:planData.ders,sinif:planData.sinif,egitimOgretimYili:planData.egitim_ogretim_yili,dersSaati:planData.ders_saati,haftalikPlan:planData.plan_data_json||[],additionalTeachers:planData.additional_teachers_json||[]};
+        
+        const generatePlanHeaders = { 'Content-Type': 'application/json' };
+        if (supabaseClient) {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session && session.access_token) {
+                generatePlanHeaders['Authorization'] = `Bearer ${session.access_token}`;
+            }
+        }
+        const docR=await fetch('/generate-plan',{method:'POST',headers: generatePlanHeaders,body:JSON.stringify(docData)});
+        if(docR.ok){
+            const blob=await docR.blob();const url=window.URL.createObjectURL(blob);
+            const a=document.createElement('a');a.href=url;a.download=`yillik_plan_${planData.plan_name.replace(/[^a-zA-Z0-9]/g,'_')}.docx`;a.click();
+            window.URL.revokeObjectURL(url);showMessage('Plan indirildi!','success');
+        }else{const errD=await docR.json().catch(()=>({message:'Word oluşturulamadı'}));throw new Error(errD.error||errD.message);}
+    }catch(e){showMessage(`❌ Plan indirilemedi: ${e.message}`,'error');}
+    finally{if(loadEl)loadEl.style.display='none';}
+}
 
-async function saveCurrentPlan(){let name=document.getElementById('currentPlanNameInput').value.trim();if(!name){currentEditingPlanId=null;const d=new Date();name=`Plan-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;document.getElementById('currentPlanNameInput').value=name;showMessage(`Plan adı: "${name}"`,'info');}let ogretmen=planaEklenenPersonal.find(p=>!p.isMudur&&p.branch)||planaEklenenPersonal.find(p=>!p.isMudur)||planaEklenenPersonal[0];if(!ogretmen&&!currentEditingPlanId){showMessage("İmza alanına öğretmen/müdür ekleyin.","error");return;}const data={plan_name:name,okul:document.getElementById('okulSidebar')?.value,ogretmen:ogretmen?ogretmen.name:"",ders:document.getElementById('dersSidebar')?.value,sinif:document.getElementById('sinifSidebar')?.value,egitim_ogretim_yili:document.getElementById('egitimOgretimYiliSidebar')?.value,ders_saati:seciliDersSaati||baseAcademicPlan[0]?.dersSaati||'1',varsayilan_arac_gerec:getSelectedSidebarAracGerec(),baslangic_haftasi:document.getElementById('baslangicHaftasiSidebar')?.value,plan_data_json:yillikPlan,base_academic_plan_json:baseAcademicPlan,additional_teachers:getAdditionalTeachers(),plan_id:currentEditingPlanId};try{const r=await fetch('/api/plans',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const res=await r.json();if(!r.ok)throw new Error(res.error||'Kaydedilemedi.');showMessage(`"${name}" kaydedildi.`,'success');if(res.id&&!currentEditingPlanId)currentEditingPlanId=res.id;loadSavedPlans();}catch(e){showMessage(`❌ Plan kaydedilemedi: ${e.message}`,'error');}}
+async function saveCurrentPlan(){
+    // Bu fonksiyon Supabase'e göre güncellenmeli
+    let name=document.getElementById('currentPlanNameInput').value.trim();
+    if(!name){currentEditingPlanId=null;const d=new Date();name=`Plan-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;document.getElementById('currentPlanNameInput').value=name;showMessage(`Plan adı: "${name}"`,'info');}
+    let ogretmen=planaEklenenPersonal.find(p=>!p.isMudur&&p.branch)||planaEklenenPersonal.find(p=>!p.isMudur)||planaEklenenPersonal[0];
+    if(!ogretmen&&!currentEditingPlanId){showMessage("İmza alanına öğretmen/müdür ekleyin.","error");return;}
+    const data={plan_name:name,okul:document.getElementById('okulSidebar')?.value,ogretmen:ogretmen?ogretmen.name:"",ders:document.getElementById('dersSidebar')?.value,sinif:document.getElementById('sinifSidebar')?.value,egitim_ogretim_yili:document.getElementById('egitimOgretimYiliSidebar')?.value,ders_saati:seciliDersSaati||baseAcademicPlan[0]?.dersSaati||'1',varsayilan_arac_gerec:getSelectedSidebarAracGerec(),baslangic_haftasi:document.getElementById('baslangicHaftasiSidebar')?.value,plan_data_json:yillikPlan,base_academic_plan_json:baseAcademicPlan,additional_teachers:getAdditionalTeachers(),plan_id:currentEditingPlanId};
+    try{
+        const headers = { 'Content-Type': 'application/json' };
+        if (supabaseClient) {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session && session.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
+        }
+        const r=await fetch('/api/plans',{method:'POST',headers: headers,body:JSON.stringify(data)}); // Bu API endpoint'i Supabase'e göre güncellenmeli
+        const res=await r.json();
+        if(!r.ok)throw new Error(res.error||'Kaydedilemedi.');
+        showMessage(`"${name}" kaydedildi.`,'success');
+        if(res.id&&!currentEditingPlanId)currentEditingPlanId=res.id;
+        loadSavedPlans();
+    }catch(e){showMessage(`❌ Plan kaydedilemedi: ${e.message}`,'error');}
+}
 
 async function loadSpecificPlan(id) {
+    // Bu fonksiyon Supabase'den veri çekecek şekilde güncellenmeli
     try {
-        const r = await fetch(`/api/plans/${id}`);
+        const headers = { 'Content-Type': 'application/json' };
+        if (supabaseClient) {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session && session.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
+        }
+        const r = await fetch(`/api/plans/${id}`, { headers }); // Bu API endpoint'i Supabase'e göre güncellenmeli
         if (!r.ok) throw new Error('Plan yüklenemedi.');
         const data = await r.json();
         ['okulSidebar', 'dersSidebar', 'sinifSidebar', 'egitimOgretimYiliSidebar', 'baslangicHaftasiSidebar'].forEach(elId => {
@@ -652,10 +981,18 @@ async function loadSpecificPlan(id) {
 }
 
 async function loadPlanOnayTarihi(planId) {
+    // Bu fonksiyon Supabase'den veri çekecek şekilde güncellenmeli
     const planOnayTarihiInput = document.getElementById('planOnayTarihiSidebar');
     if (!planOnayTarihiInput) return;
     try {
-        const response = await fetch(`/api/plans/${planId}`);
+        const headers = { 'Content-Type': 'application/json' };
+        if (supabaseClient) {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session && session.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
+        }
+        const response = await fetch(`/api/plans/${planId}`, { headers }); // Bu API endpoint'i Supabase'e göre güncellenmeli
         if (!response.ok) { planOnayTarihiInput.value = ''; return; }
         const planData = await response.json();
         planOnayTarihiInput.value = planData.plan_onay_tarihi || '';
@@ -667,8 +1004,22 @@ document.addEventListener('DOMContentLoaded',async function(){
     if(settingsBtn) settingsBtn.addEventListener('click', toggleSidebar); 
     if(closeSettingsSidebarBtnElement) closeSettingsSidebarBtnElement.addEventListener('click', toggleSidebar);
     populateEgitimOgretimYiliOptions('egitimOgretimYiliSidebar');
+    
+    // Bu API çağrıları Supabase'e göre güncellenecek
     await Promise.all([loadAllAracGerecTipleri(),loadAllYontemTeknikTipleri(),loadAllPersonal()]);
-    document.querySelectorAll('.sidebar-menu-item').forEach(i=>i.addEventListener('click',async (e)=>{e.preventDefault(); await navigateToView(i.dataset.viewTarget);})); // navigateToView çağrısını await yap
+    
+    document.querySelectorAll('.sidebar-menu-item').forEach(item => {
+        // Special handling for the demo data button is done later with its specific ID.
+        // This generic listener should only apply to items that are meant for view navigation.
+        if (item.id !== 'loadDemoDataBtn' && item.dataset.viewTarget) {
+            item.addEventListener('click', async (e) => {
+                e.preventDefault();
+                await navigateToView(item.dataset.viewTarget);
+            });
+        }
+        // If it's the loadDemoDataBtn, its specific listener (added later) will handle the click.
+    });
+
     document.getElementById('sidebarGlobalBackBtn')?.addEventListener('click',async (e)=>{ 
         e.preventDefault(); const targetView = e.currentTarget.dataset.viewTarget; 
         if (currentSidebarView === 'ogretmenDetayView') {
@@ -709,7 +1060,11 @@ document.addEventListener('DOMContentLoaded',async function(){
     });
     document.getElementById('saveOgretmenBransBtn')?.addEventListener('click', saveOgretmenDetay);
     if(baseAcademicPlan.length===0){for(let i=1;i<=TOPLAM_AKADEMIK_HAFTA;i++)baseAcademicPlan.push({originalAcademicWeek:i,dersSaati:'4',aracGerec:[],yontemTeknik:[]});}
-    setDefaultBaslangicHaftasi(); loadSavedPlans();
+    setDefaultBaslangicHaftasi(); 
+    
+    // loadSavedPlans Supabase'e göre güncellenecek
+    loadSavedPlans();
+    
     ['okulSidebar','egitimOgretimYiliSidebar','dersSidebar','sinifSidebar','baslangicHaftasiSidebar'].forEach(id=>{
         const el=document.getElementById(id);
         if(el){
@@ -725,7 +1080,19 @@ document.addEventListener('DOMContentLoaded',async function(){
                             if (yearParts.length > 0 && !isNaN(parseInt(yearParts[0], 10))) {
                                 const academicYearStart = parseInt(yearParts[0], 10);
                                 try {
-                                    const response = await fetch('/api/ensure-holidays-for-year', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ academicYearStart }) });
+                                    // Bu API çağrısı server.js'de Supabase'e göre güncellendi
+                                    const fetchHeaders = { 'Content-Type': 'application/json' };
+                                    if (supabaseClient) { // supabaseClient global değişkenini kullanıyoruz
+                                        const { data: { session } } = await supabaseClient.auth.getSession();
+                                        if (session && session.access_token) {
+                                           fetchHeaders['Authorization'] = `Bearer ${session.access_token}`;
+                                        }
+                                    }
+                                    const response = await fetch('/api/ensure-holidays-for-year', { 
+                                        method: 'POST', 
+                                        headers: fetchHeaders, 
+                                        body: JSON.stringify({ academicYearStart }) 
+                                    });
                                     if (response.ok) { const result = await response.json(); console.log(result.message); }
                                     else { const errorResult = await response.json().catch(() => ({ error: "Sunucu hatası" })); console.error(`Tatil kontrolü/üretimi hatası (${response.status}):`, errorResult.error); }
                                 } catch (error) { console.error('Tatil kontrolü/üretimi sırasında ağ hatası:', error); }
@@ -744,12 +1111,85 @@ document.addEventListener('DOMContentLoaded',async function(){
         const data={okul:document.getElementById('okulSidebar')?.value, ogretmen:ogretmen.name, ders:document.getElementById('dersSidebar')?.value, sinif:document.getElementById('sinifSidebar')?.value, egitimOgretimYili:document.getElementById('egitimOgretimYiliSidebar')?.value, dersSaati:seciliDersSaati||baseAcademicPlan[0]?.dersSaati||'1', haftalikPlan:yillikPlan, additionalTeachers:getAdditionalTeachers().filter(t=>t.name!==ogretmen.name||(t.name===ogretmen.name&&!t.isPrincipal))};
         genBtn.disabled=true; loadEl.style.display='block';
         try{
-            const r=await fetch('/generate-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+            const fetchHeaders = { 'Content-Type': 'application/json' };
+            if (supabaseClient) { // supabaseClient global değişkenini kullanıyoruz
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (session && session.access_token) {
+                   fetchHeaders['Authorization'] = `Bearer ${session.access_token}`;
+                }
+            }
+            const r=await fetch('/generate-plan',{
+                method:'POST',
+                headers: fetchHeaders,
+                body:JSON.stringify(data)
+            });
             if(r.ok){const blob=await r.blob();const url=window.URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`yillik_plan_${data.ders?.replace(/\s+/g,'_')}_${data.sinif}.docx`;a.click();window.URL.revokeObjectURL(url);showMessage('Plan indirildi!','success');}
             else{const errD=await r.json().catch(()=>({message:'Word oluşturulamadı'}));throw new Error(errD.error||'Sunucu hatası');}
         }catch(e){showMessage(`Plan oluşturulamadı: ${e.message}`,'error');}
         finally{genBtn.disabled=false;loadEl.style.display='none';}
     });
     document.getElementById('saveGenelBilgilerBtn')?.addEventListener('click',()=>{ updateYillikPlanBasligi(); updateAllWeekDates(); showMessage("Genel bilgiler güncellendi.","success"); });
-    checkAuthStatus();
+    
+    // Sayfa yüklendiğinde oturum durumunu kontrol et
+    await checkAuthStatus();
+
+    const loadDemoDataBtn = document.getElementById('loadDemoDataBtn');
+    if (loadDemoDataBtn) {
+        loadDemoDataBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (!confirm("Mevcut planınızın üzerine yazılmadan, örnek bir demo planı veritabanınıza eklenecektir. Devam etmek istiyor musunuz?")) {
+                return;
+            }
+            await loadDemoData();
+        });
+    }
 });
+
+async function loadDemoData() {
+    showMessage("Demo veriler yükleniyor...", "info", 0); // 0 duration for persistent message until success/error
+    try {
+        const fetchHeaders = { 'Content-Type': 'application/json' };
+        if (supabaseClient) {
+            const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+            if (sessionError) {
+                console.error("[Demo Veri Yükle] Oturum alınırken hata:", sessionError);
+                showMessage("Oturum bilgisi alınamadı. Lütfen tekrar giriş yapın.", "error");
+                return;
+            }
+            if (session && session.access_token) {
+                fetchHeaders['Authorization'] = `Bearer ${session.access_token}`;
+            } else {
+                console.warn("[Demo Veri Yükle] Oturum veya erişim token'ı bulunamadı.");
+                showMessage("Bu işlem için giriş yapmanız gerekmektedir. Lütfen giriş yapın.", "error");
+                return;
+            }
+        } else {
+            console.error("[Demo Veri Yükle] Supabase client bulunamadı.");
+            showMessage("Supabase istemcisi yüklenemedi. Lütfen sayfayı yenileyin.", "error");
+            return;
+        }
+
+        const response = await fetch('/api/load-demo-plan', {
+            method: 'POST',
+            headers: fetchHeaders
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            console.error(`[Demo Veri Yükle] API Hatası ${response.status}:`, result);
+            throw new Error(result.error || `Sunucu ${response.status} koduyla yanıt verdi.`);
+        }
+
+        showMessage(`"${result.plan_name}" adlı demo plan başarıyla yüklendi. ID: ${result.id}`, 'success');
+        await loadSavedPlans(); // Kayıtlı planlar listesini yenile
+        if (result.id) {
+            await loadSpecificPlan(result.id); // Yüklenen demo planı aktif et
+            toggleSidebar(); // Kenar çubuğunu kapat
+        }
+
+    } catch (error) {
+        console.error("Demo veri yükleme hatası:", error);
+        showMessage(`❌ Demo veri yüklenemedi: ${error.message}`, 'error');
+    }
+}
